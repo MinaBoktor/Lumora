@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">✨</div>
+          <h1>Highlighter</h1>
+        </div>
+        <div class="stats">
+          <span id="highlightCount">0</span>
+          <span class="stats-label">highlights</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color Palette -->
+    <div class="color-section">
+      <h3>Choose Color</h3>
+      <div class="color-palette">
+        <div class="color-option active" data-color="yellow" style="background: linear-gradient(135deg, #ffd700, #ffeb3b);" title="Yellow"></div>
+        <div class="color-option" data-color="green" style="background: linear-gradient(135deg, #4caf50, #8bc34a);" title="Green"></div>
+        <div class="color-option" data-color="blue" style="background: linear-gradient(135deg, #2196f3, #03a9f4);" title="Blue"></div>
+        <div class="color-option" data-color="pink" style="background: linear-gradient(135deg, #e91e63, #f06292);" title="Pink"></div>
+        <div class="color-option" data-color="orange" style="background: linear-gradient(135deg, #ff9800, #ffc107);" title="Orange"></div>
+        <div class="color-option" data-color="purple" style="background: linear-gradient(135deg, #9c27b0, #ba68c8);" title="Purple"></div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <button id="highlightBtn" class="btn btn-primary">
+        <span class="btn-icon">🖍️</span>
+        Highlight Selection
+      </button>
+      <div class="btn-group">
+        <button id="copyBtn" class="btn btn-secondary">
+          <span class="btn-icon">📋</span>
+          Copy All
+        </button>
+        <button id="exportBtn" class="btn btn-secondary">
+          <span class="btn-icon">💾</span>
+          Export
+        </button>
+      </div>
+      <button id="clearBtn" class="btn btn-danger">
+        <span class="btn-icon">🗑️</span>
+        Clear All
+      </button>
+    </div>
+
+    <!-- Highlights List -->
+    <div class="highlights-section">
+      <div class="section-header">
+        <h3>Recent Highlights</h3>
+        <button id="toggleView" class="toggle-btn">📋</button>
+      </div>
+      <div id="highlights" class="highlights-container">
+        <div class="empty-state">
+          <div class="empty-icon">💡</div>
+          <p>No highlights yet</p>
+          <small>Select text and click highlight to get started</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="shortcuts">
+        <small>💡 Right-click selected text for quick actions</small>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

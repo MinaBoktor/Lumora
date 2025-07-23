@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Modern Text Highlighter",
+  "version": "2.0",
+  "description": "Beautiful text highlighter with advanced features",
+  "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Modern Text Highlighter"
+  }
+
+}
