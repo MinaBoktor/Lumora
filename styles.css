@@ -1,0 +1,237 @@
+/* Modern Highlighter Styles - Optimized for stability */
+
+.modern-highlight {
+  /* Base highlight styles */
+  background: var(--highlight-bg, #fff3cd) !important;
+  border-bottom: 2px solid var(--highlight-border, #ffd700) !important;
+  color: var(--highlight-text, #856404) !important;
+  
+  /* Prevent flickering and layout shifts */
+  position: relative;
+  display: inline;
+  padding: 2px 4px;
+  border-radius: 3px;
+  
+  /* Smooth transitions */
+  transition: all 0.2s ease;
+  
+  /* Improve text readability */
+  text-decoration: none !important;
+  font-weight: inherit;
+  font-style: inherit;
+  
+  /* Ensure proper layering */
+  z-index: 1;
+  
+  /* Prevent text selection issues */
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  
+  /* Hardware acceleration for smooth rendering */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  
+  /* Prevent margin collapse */
+  box-sizing: border-box;
+}
+
+.modern-highlight:hover {
+  /* Subtle hover effect */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Color variants */
+.modern-highlight[data-color="yellow"] {
+  --highlight-bg: #fff3cd;
+  --highlight-border: #ffd700;
+  --highlight-text: #856404;
+}
+
+.modern-highlight[data-color="green"] {
+  --highlight-bg: #d1f2eb;
+  --highlight-border: #10b981;
+  --highlight-text: #0d5744;
+}
+
+.modern-highlight[data-color="blue"] {
+  --highlight-bg: #cce7ff;
+  --highlight-border: #3b82f6;
+  --highlight-text: #1e3a8a;
+}
+
+.modern-highlight[data-color="pink"] {
+  --highlight-bg: #fce7f3;
+  --highlight-border: #ec4899;
+  --highlight-text: #831843;
+}
+
+.modern-highlight[data-color="orange"] {
+  --highlight-bg: #fed7aa;
+  --highlight-border: #f97316;
+  --highlight-text: #9a3412;
+}
+
+.modern-highlight[data-color="purple"] {
+  --highlight-bg: #e9d5ff;
+  --highlight-border: #8b5cf6;
+  --highlight-text: #5b21b6;
+}
+
+/* Flash animation for jumping to highlights */
+@keyframes flashHighlight {
+  0%, 100% { 
+    background: var(--highlight-bg);
+    box-shadow: 0 0 0 0 var(--highlight-border);
+  }
+  50% { 
+    background: var(--highlight-border);
+    box-shadow: 0 0 0 4px rgba(255, 215, 0, 0.3);
+  }
+}
+
+.flash-highlight {
+  animation: flashHighlight 0.6s ease 3;
+}
+
+/* Selected highlight styles */
+.lumora-selected {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4) !important;
+  outline: 2px solid #6366f1 !important;
+  outline-offset: 1px !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.lumora-selected::after {
+  content: '✓';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #6366f1;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  z-index: 11;
+}
+
+/* Notification styles */
+.highlight-notification {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  z-index: 999999 !important;
+  
+  background: #3b82f6 !important;
+  color: white !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  max-width: 300px !important;
+  word-wrap: break-word !important;
+  
+  /* Smooth animations */
+  transition: all 0.3s ease !important;
+  
+  /* Prevent interference with page content */
+  pointer-events: none !important;
+}
+
+.highlight-notification.success {
+  background: #10b981 !important;
+}
+
+.highlight-notification.warning {
+  background: #f59e0b !important;
+}
+
+.highlight-notification.error {
+  background: #ef4444 !important;
+}
+
+.highlight-notification.info {
+  background: #3b82f6 !important;
+}
+
+/* Animation keyframes */
+@keyframes slideInRight {
+  from { 
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to { 
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from { 
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to { 
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Ensure highlights don't interfere with page layout */
+.modern-highlight * {
+  background: inherit !important;
+  color: inherit !important;
+}
+
+/* Prevent highlights from breaking in certain contexts */
+.modern-highlight {
+  white-space: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  word-spacing: inherit !important;
+}
+
+/* Selection styles for better UX */
+.modern-highlight::selection {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+.modern-highlight::-moz-selection {
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .highlight-notification {
+    top: 10px !important;
+    right: 10px !important;
+    left: 10px !important;
+    max-width: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .modern-highlight {
+    background: transparent !important;
+    border-bottom: 1px solid #000 !important;
+    color: inherit !important;
+    box-shadow: none !important;
+  }
+  
+  .highlight-notification {
+    display: none !important;
+  }
+}
+

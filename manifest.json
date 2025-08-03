@@ -1,12 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Modern Text Highlighter",
+  "name": "Lumora",
   "version": "2.0",
-  "description": "Beautiful text highlighter with advanced features",
+  "description": "Illuminate your reading with beautiful, intelligent text highlighting",
   "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
+
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+
   "background": {
     "service_worker": "background.js"
   },
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -14,9 +22,14 @@
       "css": ["styles.css"]
     }
   ],
+
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Modern Text Highlighter"
+    "default_title": "Lumora - Intelligent Text Highlighter",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   }
-
 }

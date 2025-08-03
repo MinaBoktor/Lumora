@@ -4,19 +4,19 @@ chrome.runtime.onInstalled.addListener(() => {
   // Create context menu items for highlighting
   chrome.contextMenus.create({
     id: "highlightText",
-    title: "🖍️ Highlight Selection",
+    title: "✨ Illuminate Selection",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
-    id: "clearHighlights",
-    title: "🧹 Clear All Highlights",
-    contexts: ["page"]
+    id: "selectHighlight",
+    title: "🎯 Select This Illumination",
+    contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
-    id: "removeHighlight",
-    title: "❌ Remove This Highlight",
+    id: "deselectHighlight",
+    title: "🚫 Deselect This Illumination",
     contexts: ["selection"]
   });
 
@@ -27,14 +27,44 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 
   chrome.contextMenus.create({
-    id: "copyHighlight",
-    title: "📋 Copy Highlight",
+    id: "removeHighlight",
+    title: "❌ Remove This Illumination",
     contexts: ["selection"]
   });
 
   chrome.contextMenus.create({
+    id: "copyHighlight",
+    title: "📋 Copy Illumination",
+    contexts: ["selection"]
+  });
+
+  chrome.contextMenus.create({
+    id: "separator2",
+    type: "separator",
+    contexts: ["page"]
+  });
+
+  chrome.contextMenus.create({
+    id: "selectAllHighlights",
+    title: "🎯 Select All Illuminations",
+    contexts: ["page"]
+  });
+
+  chrome.contextMenus.create({
+    id: "deselectAllHighlights",
+    title: "🚫 Deselect All Illuminations",
+    contexts: ["page"]
+  });
+
+  chrome.contextMenus.create({
+    id: "clearHighlights",
+    title: "🧹 Clear All Illuminations",
+    contexts: ["page"]
+  });
+
+  chrome.contextMenus.create({
     id: "exportHighlights",
-    title: "💾 Export All Highlights",
+    title: "💾 Export All Illuminations",
     contexts: ["page"]
   });
 });
@@ -55,6 +85,22 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           action: "highlightSelectedText", 
           color: currentColor 
         });
+        break;
+
+      case "selectHighlight":
+        chrome.tabs.sendMessage(tab.id, { action: "selectHighlightAtSelection" });
+        break;
+
+      case "deselectHighlight":
+        chrome.tabs.sendMessage(tab.id, { action: "deselectHighlightAtSelection" });
+        break;
+
+      case "selectAllHighlights":
+        chrome.tabs.sendMessage(tab.id, { action: "selectAllHighlights" });
+        break;
+
+      case "deselectAllHighlights":
+        chrome.tabs.sendMessage(tab.id, { action: "deselectAllHighlights" });
         break;
 
       case "clearHighlights":

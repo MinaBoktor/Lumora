@@ -111,6 +111,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
       
+    case "selectHighlightAtSelection":
+      selectHighlightAtSelection();
+      sendResponse({ success: true });
+      break;
+      
+    case "deselectHighlightAtSelection":
+      deselectHighlightAtSelection();
+      sendResponse({ success: true });
+      break;
+      
+    case "selectAllHighlights":
+      selectAllHighlights();
+      sendResponse({ success: true });
+      break;
+      
+    case "deselectAllHighlights":
+      deselectAllHighlights();
+      sendResponse({ success: true });
+      break;
+      
     case "getHighlights":
       sendResponse({ highlights: pageHighlights });
       break;
@@ -130,7 +150,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 async function highlightSelection(color = null) {
   const selection = window.getSelection();
   if (!selection || selection.isCollapsed) {
-    showNotification('Please select some text to highlight', 'warning');
+    showNotification('Please select some text to illuminate', 'warning');
     return;
   }
 
@@ -154,7 +174,7 @@ async function highlightSelection(color = null) {
     highlightElement.style.setProperty('--highlight-text', HIGHLIGHT_COLORS[highlightColor].text);
     
     // Add tooltip
-    highlightElement.title = `Highlighted on ${new Date().toLocaleString()}\nCtrl+Click to remove`;
+    highlightElement.title = `Illuminated on ${new Date().toLocaleString()}\nCtrl+Click to remove`;
     
     // Wrap the selected content
     try {
@@ -188,7 +208,7 @@ async function highlightSelection(color = null) {
     
     // Show notification
     if (currentSettings.showNotifications) {
-      showNotification(`Text highlighted with ${highlightColor} color`, 'success');
+      showNotification(`Text illuminated with ${highlightColor} color`, 'success');
     }
     
     // Notify popup of update
@@ -196,7 +216,7 @@ async function highlightSelection(color = null) {
     
   } catch (error) {
     console.error('Failed to highlight text:', error);
-    showNotification('Failed to highlight text', 'error');
+    showNotification('Failed to illuminate text', 'error');
   }
 }
 
@@ -216,7 +236,7 @@ function clearAllHighlights() {
   // Remove from storage
   chrome.storage.local.remove([pageURL]);
   
-  showNotification('All highlights cleared', 'info');
+  showNotification('All illuminations cleared', 'info');
   notifyHighlightsUpdated();
 }
 
@@ -250,7 +270,7 @@ function removeHighlightById(highlightId) {
     saveHighlightsToStorage();
     notifyHighlightsUpdated();
     
-    showNotification('Highlight removed', 'info');
+    showNotification('Illumination removed', 'info');
   }
 }
 
@@ -261,9 +281,9 @@ function copySelectedHighlight() {
   const selectedText = selection.toString().trim();
   if (selectedText) {
     navigator.clipboard.writeText(selectedText).then(() => {
-      showNotification('Highlight copied to clipboard', 'success');
+      showNotification('Illumination copied to clipboard', 'success');
     }).catch(() => {
-      showNotification('Failed to copy highlight', 'error');
+      showNotification('Failed to copy illumination', 'error');
     });
   }
 }
@@ -286,7 +306,7 @@ function jumpToHighlight(highlightId) {
 
 function exportAllHighlights() {
   if (pageHighlights.length === 0) {
-    showNotification('No highlights to export', 'warning');
+    showNotification('No illuminations to export', 'warning');
     return;
   }
 
@@ -311,13 +331,73 @@ function exportAllHighlights() {
   
   const a = document.createElement('a');
   a.href = url;
-  a.download = `highlights-${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `lumora-illuminations-${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   
-  showNotification('Highlights exported successfully', 'success');
+  showNotification('Illuminations exported successfully', 'success');
+}
+
+function selectHighlightAtSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  const element = range.startContainer.nodeType === Node.TEXT_NODE 
+    ? range.startContainer.parentElement 
+    : range.startContainer;
+
+  const highlight = element.closest('.modern-highlight');
+  if (highlight) {
+    // Add selected class
+    highlight.classList.add('lumora-selected');
+    showNotification('Illumination selected', 'info');
+  }
+}
+
+function deselectHighlightAtSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+
+  const range = selection.getRangeAt(0);
+  const element = range.startContainer.nodeType === Node.TEXT_NODE 
+    ? range.startContainer.parentElement 
+    : range.startContainer;
+
+  const highlight = element.closest('.modern-highlight');
+  if (highlight) {
+    // Remove selected class
+    highlight.classList.remove('lumora-selected');
+    showNotification('Illumination deselected', 'info');
+  }
+}
+
+function selectAllHighlights() {
+  const highlights = document.querySelectorAll('.modern-highlight');
+  highlights.forEach(highlight => {
+    highlight.classList.add('lumora-selected');
+  });
+  
+  if (highlights.length > 0) {
+    showNotification(`${highlights.length} illuminations selected`, 'success');
+  } else {
+    showNotification('No illuminations to select', 'warning');
+  }
+}
+
+function deselectAllHighlights() {
+  const highlights = document.querySelectorAll('.modern-highlight.lumora-selected');
+  highlights.forEach(highlight => {
+    highlight.classList.remove('lumora-selected');
+  });
+  
+  if (highlights.length > 0) {
+    showNotification(`${highlights.length} illuminations deselected`, 'info');
+  } else {
+    showNotification('No illuminations were selected', 'warning');
+  }
 }
 
 // Utility functions
@@ -365,7 +445,12 @@ async function saveHighlightsToStorage() {
 async function restoreHighlightsFromStorage() {
   try {
     const result = await chrome.storage.local.get([pageURL]);
-    const savedHighlights = result[pageURL];
+    let savedHighlights = result[pageURL];
+    
+    // If Chrome storage is empty, try local backup
+    if (!savedHighlights || savedHighlights.length === 0) {
+      savedHighlights = await restoreFromLocalBackup();
+    }
     
     if (!savedHighlights || savedHighlights.length === 0) return;
 
@@ -380,6 +465,22 @@ async function restoreHighlightsFromStorage() {
     
   } catch (error) {
     console.error('Failed to restore highlights:', error);
+    
+    // Try local backup as final fallback
+    try {
+      const backupHighlights = await restoreFromLocalBackup();
+      if (backupHighlights.length > 0) {
+        setTimeout(() => {
+          backupHighlights.forEach(highlight => {
+            restoreHighlight(highlight);
+          });
+          pageHighlights = backupHighlights;
+          notifyHighlightsUpdated();
+        }, 500);
+      }
+    } catch (backupError) {
+      console.error('Failed to restore from backup:', backupError);
+    }
   }
 }
 
@@ -412,7 +513,7 @@ function restoreHighlight(highlightData) {
         highlightElement.style.setProperty('--highlight-bg', HIGHLIGHT_COLORS[highlightData.color].bg);
         highlightElement.style.setProperty('--highlight-border', HIGHLIGHT_COLORS[highlightData.color].border);
         highlightElement.style.setProperty('--highlight-text', HIGHLIGHT_COLORS[highlightData.color].text);
-        highlightElement.title = `Highlighted on ${new Date(highlightData.timestamp).toLocaleString()}\nCtrl+Click to remove`;
+        highlightElement.title = `Illuminated on ${new Date(highlightData.timestamp).toLocaleString()}\nCtrl+Click to remove`;
         
         try {
           range.surroundContents(highlightElement);
@@ -534,9 +635,114 @@ async function saveHighlightsToStorage() {
     }
     const data = { [pageURL]: pageHighlights };
     await chrome.storage.local.set(data);
+    
+    // Also save to local file system for backup
+    await saveHighlightsToLocalFile();
   } catch (error) {
     console.error('Failed to save highlights:', error);
   }
+}
+
+async function saveHighlightsToLocalFile() {
+  try {
+    // Create backup data
+    const backupData = {
+      url: pageURL,
+      title: document.title,
+      timestamp: new Date().toISOString(),
+      highlights: pageHighlights
+    };
+    
+    // Save to localStorage as backup
+    const backupKey = `lumora_backup_${btoa(pageURL).slice(0, 20)}`;
+    localStorage.setItem(backupKey, JSON.stringify(backupData));
+    
+    // Also try to save to IndexedDB for better persistence
+    try {
+      await saveToIndexedDB(backupKey, backupData);
+    } catch (idbError) {
+      console.log('IndexedDB save failed, using localStorage only:', idbError);
+    }
+    
+  } catch (error) {
+    console.error('Failed to save local backup:', error);
+  }
+}
+
+async function saveToIndexedDB(key, data) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('LumoraBackups', 1);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(['backups'], 'readwrite');
+      const store = transaction.objectStore('backups');
+      
+      const putRequest = store.put({ id: key, data: data, timestamp: Date.now() });
+      putRequest.onsuccess = () => resolve();
+      putRequest.onerror = () => reject(putRequest.error);
+    };
+    
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('backups')) {
+        const store = db.createObjectStore('backups', { keyPath: 'id' });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+    };
+  });
+}
+
+// Add function to restore from local backup if Chrome storage fails
+async function restoreFromLocalBackup() {
+  try {
+    const backupKey = `lumora_backup_${btoa(pageURL).slice(0, 20)}`;
+    
+    // Try IndexedDB first
+    try {
+      const idbData = await getFromIndexedDB(backupKey);
+      if (idbData && idbData.highlights) {
+        return idbData.highlights;
+      }
+    } catch (idbError) {
+      console.log('IndexedDB restore failed, trying localStorage:', idbError);
+    }
+    
+    // Fallback to localStorage
+    const localData = localStorage.getItem(backupKey);
+    if (localData) {
+      const parsed = JSON.parse(localData);
+      return parsed.highlights || [];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Failed to restore from local backup:', error);
+    return [];
+  }
+}
+
+async function getFromIndexedDB(key) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('LumoraBackups', 1);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(['backups'], 'readonly');
+      const store = transaction.objectStore('backups');
+      
+      const getRequest = store.get(key);
+      getRequest.onsuccess = () => {
+        const result = getRequest.result;
+        resolve(result ? result.data : null);
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    };
+  });
 }
 
 function notifyHighlightsUpdated() {
@@ -544,8 +750,13 @@ function notifyHighlightsUpdated() {
     // Extension context invalidated
     return;
   }
-  chrome.runtime.sendMessage({
-    action: 'highlightsUpdated',
-    highlights: pageHighlights
-  }).catch(() => {});
+  
+  // Debounce notifications to prevent flickering
+  clearTimeout(notifyHighlightsUpdated.timeout);
+  notifyHighlightsUpdated.timeout = setTimeout(() => {
+    chrome.runtime.sendMessage({
+      action: 'highlightsUpdated',
+      highlights: pageHighlights
+    }).catch(() => {});
+  }, 100);
 }

@@ -1,84 +1,712 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="popup.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumora</title>
+    <style>
+        /* General Styles and Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            width: 380px;
+            height: 600px;
+            background-color: #212121; /* Dark charcoal background */
+            color: #F8F9FA; /* Off-white text for high contrast */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px;
+            text-align: center;
+            background-color: #343A40; /* Lighter charcoal background */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: #FFD700; /* Golden Yellow for brand name */
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .tagline {
+            font-size: 12px;
+            opacity: 0.7;
+            font-weight: 500;
+            margin-top: 4px;
+            color: #ADB5BD; /* Soft gray for tagline */
+        }
+
+        /* Action Section - Highlight Button */
+        .action-section {
+            padding: 16px 20px;
+            background-color: #212121;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .highlight-btn {
+            width: 100%;
+            background-color: #FFD700; /* Golden Yellow primary button */
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: #212121; /* Dark text on light button */
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.25);
+            position: relative;
+        }
+
+        .highlight-btn:hover:not(:disabled) {
+            background-color: #FFC107;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 215, 0, 0.4);
+        }
+
+        .highlight-btn:disabled {
+            background-color: #6C757D;
+            color: #DEE2E6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-icon {
+            font-size: 16px;
+        }
+
+        /* Color indicator on button */
+        .current-color-indicator {
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #212121; /* Dark border on light button */
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s;
+        }
+
+        /* Color Palette in Settings */
+        .color-section {
+            padding: 12px 0;
+        }
+
+        .color-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #F8F9FA;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 8px;
+        }
+
+        .color-option {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-option.active {
+            border-color: #FFD700; /* Active border color is Golden Yellow */
+            transform: scale(1.05);
+            box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Highlight colors from the suggested palette */
+        .color-yellow { background-color: #FFD700; }
+        .color-green { background-color: #28a745; }
+        .color-blue { background-color: #17A2B8; }
+        .color-pink { background-color: #E83E8C; }
+        .color-orange { background-color: #FD7E14; }
+        .color-purple { background-color: #6F42C1; }
+
+        /* Highlights Section */
+        .highlights-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .section-header {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #343A40;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #F8F9FA;
+        }
+
+        .highlight-count {
+            background-color: #495057;
+            color: #DEE2E6;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .highlights-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            background-color: #212121;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            height: 100%;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #F8F9FA;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            color: #ADB5BD;
+            line-height: 1.5;
+            max-width: 280px;
+        }
+
+        .highlight-item {
+            background-color: #343A40;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            padding-left: 16px;
+            margin-bottom: 10px;
+            transition: box-shadow 0.2s, transform 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .highlight-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .highlight-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 8px;
+            height: 100%;
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+
+        /* Color bar for highlights */
+        .highlight-item.color-yellow::before { background-color: #FFD700; }
+        .highlight-item.color-green::before { background-color: #28a745; }
+        .highlight-item.color-blue::before { background-color: #17A2B8; }
+        .highlight-item.color-pink::before { background-color: #E83E8C; }
+        .highlight-item.color-orange::before { background-color: #FD7E14; }
+        .highlight-item.color-purple::before { background-color: #6F42C1; }
+
+        .highlight-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #F8F9FA;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .highlight-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #ADB5BD;
+        }
+
+        .highlight-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-icon {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #ADB5BD;
+            transition: all 0.2s ease;
+            font-size: 12px;
+        }
+
+        .action-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #F8F9FA;
+        }
+
+        /* Bottom Actions */
+        .bottom-actions {
+            padding: 12px 20px;
+            display: flex;
+            gap: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #212121;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            background: #343A40;
+            color: #ADB5BD;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: #495057;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #212121;
+        }
+
+        .action-btn.danger:hover:not(:disabled) {
+            background: #DC3545;
+            border-color: #DC3545;
+            color: #F8F9FA;
+        }
+
+        /* Settings */
+        .settings-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #212121;
+        }
+
+        .settings-toggle {
+            padding: 12px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #ADB5BD;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            background-color: #212121;
+        }
+
+        .settings-toggle:hover {
+            background-color: #343A40;
+        }
+
+        .settings-content {
+            padding: 16px 20px;
+            display: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #343A40;
+        }
+
+        .settings-content.open {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            font-size: 13px;
+            color: #F8F9FA;
+            font-weight: 600;
+        }
+
+        .setting-description {
+            font-size: 11px;
+            color: #ADB5BD;
+            margin-top: 2px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            background: #495057;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch.active {
+            background-color: #28a745; /* Green active color for success/on state */
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(16px);
+        }
+
+        /* Scrollbar */
+        .highlights-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .highlights-container::-webkit-scrollbar-track {
+            background: #343A40;
+            border-radius: 3px;
+        }
+
+        .highlights-container::-webkit-scrollbar-thumb {
+            background: #495057;
+            border-radius: 3px;
+        }
+
+        .highlights-container::-webkit-scrollbar-thumb:hover {
+            background: #6C757D;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .logo-container {
+        display: flex;
+        justify-content: center;  /* Horizontal center */
+        align-items: center;      /* Vertical center */
+        height: 7vh;            /* Full viewport height */
+        }
+
+        .logo {
+            width: 300px;
+            height: 100px;
+            object-fit: contain;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
     <div class="header">
-      <div class="header-content">
-        <div class="logo">
-          <div class="logo-icon">✨</div>
-          <h1>Highlighter</h1>
+        <div class="logo-container">
+            <img src="logo.png" alt="Lumora Logo" class="logo">
         </div>
-        <div class="stats">
-          <span id="highlightCount">0</span>
-          <span class="stats-label">highlights</span>
+    </div>
+
+        <div class="action-section">
+            <button class="highlight-btn" id="highlightBtn" disabled>
+                <span class="btn-icon">✨</span>
+                Highlight Selection
+                <div class="current-color-indicator color-yellow" id="colorIndicator"></div>
+            </button>
         </div>
-      </div>
-    </div>
 
-    <!-- Color Palette -->
-    <div class="color-section">
-      <h3>Choose Color</h3>
-      <div class="color-palette">
-        <div class="color-option active" data-color="yellow" style="background: linear-gradient(135deg, #ffd700, #ffeb3b);" title="Yellow"></div>
-        <div class="color-option" data-color="green" style="background: linear-gradient(135deg, #4caf50, #8bc34a);" title="Green"></div>
-        <div class="color-option" data-color="blue" style="background: linear-gradient(135deg, #2196f3, #03a9f4);" title="Blue"></div>
-        <div class="color-option" data-color="pink" style="background: linear-gradient(135deg, #e91e63, #f06292);" title="Pink"></div>
-        <div class="color-option" data-color="orange" style="background: linear-gradient(135deg, #ff9800, #ffc107);" title="Orange"></div>
-        <div class="color-option" data-color="purple" style="background: linear-gradient(135deg, #9c27b0, #ba68c8);" title="Purple"></div>
-      </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="actions">
-      <button id="highlightBtn" class="btn btn-primary">
-        <span class="btn-icon">🖍️</span>
-        Highlight Selection
-      </button>
-      <div class="btn-group">
-        <button id="copyBtn" class="btn btn-secondary">
-          <span class="btn-icon">📋</span>
-          Copy All
-        </button>
-        <button id="exportBtn" class="btn btn-secondary">
-          <span class="btn-icon">💾</span>
-          Export
-        </button>
-      </div>
-      <button id="clearBtn" class="btn btn-danger">
-        <span class="btn-icon">🗑️</span>
-        Clear All
-      </button>
-    </div>
-
-    <!-- Highlights List -->
-    <div class="highlights-section">
-      <div class="section-header">
-        <h3>Recent Highlights</h3>
-        <button id="toggleView" class="toggle-btn">📋</button>
-      </div>
-      <div id="highlights" class="highlights-container">
-        <div class="empty-state">
-          <div class="empty-icon">💡</div>
-          <p>No highlights yet</p>
-          <small>Select text and click highlight to get started</small>
+        <div class="highlights-section">
+            <div class="section-header">
+                <h3 class="section-title">Your Highlights</h3>
+                <span class="highlight-count" id="highlightCount">0</span>
+            </div>
+            
+            <div class="highlights-container" id="highlightsContainer">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">💡</div>
+                    <h3>Ready to illuminate?</h3>
+                    <p>Select any text on this page and click "Highlight Selection" to capture your insights.</p>
+                </div>
+                
+                <div id="highlightsList"></div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="footer">
-      <div class="shortcuts">
-        <small>💡 Right-click selected text for quick actions</small>
-      </div>
+        <div class="bottom-actions">
+            <button class="action-btn" id="selectAllBtn" disabled>
+                <span>📋</span>
+                Select All
+            </button>
+            <button class="action-btn" id="exportBtn" disabled>
+                <span>💾</span>
+                Export
+            </button>
+            <button class="action-btn danger" id="clearAllBtn" disabled>
+                <span>🗑️</span>
+                Clear All
+            </button>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-toggle" id="settingsToggle">
+                <span>⚙️</span>
+                <span>Settings</span>
+            </div>
+            
+            <div class="settings-content" id="settingsContent">
+                <div class="color-section">
+                    <div class="color-label">Highlight Color</div>
+                    <div class="color-palette">
+                        <div class="color-option color-yellow active" data-color="yellow" title="Yellow"></div>
+                        <div class="color-option color-green" data-color="green" title="Green"></div>
+                        <div class="color-option color-blue" data-color="blue" title="Blue"></div>
+                        <div class="color-option color-pink" data-color="pink" title="Pink"></div>
+                        <div class="color-option color-orange" data-color="orange" title="Orange"></div>
+                        <div class="color-option color-purple" data-color="purple" title="Purple"></div>
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">Auto-save highlights</div>
+                        <div class="setting-description">Automatically save highlights as you create them</div>
+                    </div>
+                    <div class="toggle-switch active" id="autoSaveToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+                
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">Show notifications</div>
+                        <div class="setting-description">Get notified when highlights are saved</div>
+                    </div>
+                    <div class="toggle-switch active" id="notificationsToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-  <script src="popup.js"></script>
+    
+    <script>
+        let selectedColor = 'yellow';
+        let highlights = [];
+        let settingsOpen = false;
+
+        // Color picker
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                selectedColor = this.dataset.color;
+                
+                // Update color indicator on button
+                const indicator = document.getElementById('colorIndicator');
+                indicator.className = `current-color-indicator color-${selectedColor}`;
+            });
+        });
+
+        // Settings toggle
+        document.getElementById('settingsToggle').addEventListener('click', function() {
+            settingsOpen = !settingsOpen;
+            const content = document.getElementById('settingsContent');
+            content.classList.toggle('open', settingsOpen);
+        });
+
+        // Toggle switches
+        document.querySelectorAll('.toggle-switch').forEach(toggle => {
+            toggle.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        // Mock highlight functionality
+        function addMockHighlight() {
+            const mockTexts = [
+                "Revolutionary insights that will change how we think about productivity and creativity.",
+                "The key to success lies in understanding fundamental principles of human behavior.",
+                "This breakthrough discovery opens new possibilities for innovation and growth.",
+                "Remember: the most powerful tool for change is consistent action with clear vision."
+            ];
+            
+            const colors = ['yellow', 'green', 'blue', 'pink', 'orange', 'purple'];
+            const randomText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            highlights.push({
+                id: Date.now(),
+                text: randomText,
+                color: randomColor,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            
+            updateHighlightsList();
+        }
+
+        function updateHighlightsList() {
+            const container = document.getElementById('highlightsList');
+            const emptyState = document.getElementById('emptyState');
+            const count = document.getElementById('highlightCount');
+            
+            count.textContent = highlights.length;
+            
+            if (highlights.length === 0) {
+                emptyState.style.display = 'flex';
+                container.innerHTML = '';
+                document.querySelectorAll('.bottom-actions .action-btn').forEach(btn => {
+                    btn.disabled = true;
+                });
+            } else {
+                emptyState.style.display = 'none';
+                document.querySelectorAll('.bottom-actions .action-btn').forEach(btn => {
+                    btn.disabled = false;
+                });
+                
+                container.innerHTML = highlights.map((highlight, index) => `
+                    <div class="highlight-item fade-in color-${highlight.color}" style="animation-delay: ${index * 0.05}s">
+                        <div class="highlight-text">${highlight.text}</div>
+                        <div class="highlight-meta">
+                            <span>${highlight.timestamp}</span>
+                            <div class="highlight-actions">
+                                <button class="action-icon" onclick="editHighlight(${highlight.id})" title="Edit">✏️</button>
+                                <button class="action-icon" onclick="deleteHighlight(${highlight.id})" title="Delete">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function deleteHighlight(id) {
+            highlights = highlights.filter(h => h.id !== id);
+            updateHighlightsList();
+        }
+
+        function editHighlight(id) {
+            const highlight = highlights.find(h => h.id === id);
+            if (highlight) {
+                const newText = prompt('Edit highlight:', highlight.text);
+                if (newText && newText.trim()) {
+                    highlight.text = newText.trim();
+                    updateHighlightsList();
+                }
+            }
+        }
+
+        // Button event listeners
+        document.getElementById('highlightBtn').addEventListener('click', addMockHighlight);
+
+        document.getElementById('selectAllBtn').addEventListener('click', function() {
+            navigator.clipboard.writeText(highlights.map(h => h.text).join('\n\n'));
+            this.innerHTML = '<span>✓</span>Copied!';
+            setTimeout(() => {
+                this.innerHTML = '<span>📋</span>Select All';
+            }, 2000);
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const data = highlights.map(h => `[${h.color.toUpperCase()}] ${h.text} (${h.timestamp})`).join('\n\n');
+            const blob = new Blob([data], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'highlights.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('clearAllBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all highlights?')) {
+                highlights = [];
+                updateHighlightsList();
+            }
+        });
+
+        // Initialize
+        updateHighlightsList();
+
+        // Enable highlight button for demo
+        setTimeout(() => {
+            document.getElementById('highlightBtn').disabled = false;
+        }, 1000);
+    </script>
 </body>
 </html>
