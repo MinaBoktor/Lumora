@@ -1,0 +1,20 @@
+        .logo-container {
+        display: flex;
+        justify-content: center;  /* Horizontal center */
+        align-items: center;      /* Vertical center */
+        height: 7vh;            /* Full viewport height */
+        }
+
+        .logo {
+            width: 300px;
+            height: 100px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo-container">
+            <img src="logo.png" alt="Lumora Logo" class="logo">
+        </div>
+    </div>

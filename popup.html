@@ -463,6 +463,23 @@
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;  /* Horizontal center */
+            align-items: center;      /* Vertical center */
+            height: 7vh;            /* Full viewport height */
+        }
+
+        .logo {
+            width: 300px;
+            height: 100px;
+            object-fit: contain;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
         .logo-container {
         display: flex;
         justify-content: center;  /* Horizontal center */
@@ -566,147 +583,7 @@
         </div>
     </div>
     
-    <script>
-        let selectedColor = 'yellow';
-        let highlights = [];
-        let settingsOpen = false;
-
-        // Color picker
-        document.querySelectorAll('.color-option').forEach(option => {
-            option.addEventListener('click', function() {
-                document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
-                this.classList.add('active');
-                selectedColor = this.dataset.color;
-                
-                // Update color indicator on button
-                const indicator = document.getElementById('colorIndicator');
-                indicator.className = `current-color-indicator color-${selectedColor}`;
-            });
-        });
-
-        // Settings toggle
-        document.getElementById('settingsToggle').addEventListener('click', function() {
-            settingsOpen = !settingsOpen;
-            const content = document.getElementById('settingsContent');
-            content.classList.toggle('open', settingsOpen);
-        });
-
-        // Toggle switches
-        document.querySelectorAll('.toggle-switch').forEach(toggle => {
-            toggle.addEventListener('click', function() {
-                this.classList.toggle('active');
-            });
-        });
-
-        // Mock highlight functionality
-        function addMockHighlight() {
-            const mockTexts = [
-                "Revolutionary insights that will change how we think about productivity and creativity.",
-                "The key to success lies in understanding fundamental principles of human behavior.",
-                "This breakthrough discovery opens new possibilities for innovation and growth.",
-                "Remember: the most powerful tool for change is consistent action with clear vision."
-            ];
-            
-            const colors = ['yellow', 'green', 'blue', 'pink', 'orange', 'purple'];
-            const randomText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            
-            highlights.push({
-                id: Date.now(),
-                text: randomText,
-                color: randomColor,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-            
-            updateHighlightsList();
-        }
-
-        function updateHighlightsList() {
-            const container = document.getElementById('highlightsList');
-            const emptyState = document.getElementById('emptyState');
-            const count = document.getElementById('highlightCount');
-            
-            count.textContent = highlights.length;
-            
-            if (highlights.length === 0) {
-                emptyState.style.display = 'flex';
-                container.innerHTML = '';
-                document.querySelectorAll('.bottom-actions .action-btn').forEach(btn => {
-                    btn.disabled = true;
-                });
-            } else {
-                emptyState.style.display = 'none';
-                document.querySelectorAll('.bottom-actions .action-btn').forEach(btn => {
-                    btn.disabled = false;
-                });
-                
-                container.innerHTML = highlights.map((highlight, index) => `
-                    <div class="highlight-item fade-in color-${highlight.color}" style="animation-delay: ${index * 0.05}s">
-                        <div class="highlight-text">${highlight.text}</div>
-                        <div class="highlight-meta">
-                            <span>${highlight.timestamp}</span>
-                            <div class="highlight-actions">
-                                <button class="action-icon" onclick="editHighlight(${highlight.id})" title="Edit">✏️</button>
-                                <button class="action-icon" onclick="deleteHighlight(${highlight.id})" title="Delete">🗑️</button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function deleteHighlight(id) {
-            highlights = highlights.filter(h => h.id !== id);
-            updateHighlightsList();
-        }
-
-        function editHighlight(id) {
-            const highlight = highlights.find(h => h.id === id);
-            if (highlight) {
-                const newText = prompt('Edit highlight:', highlight.text);
-                if (newText && newText.trim()) {
-                    highlight.text = newText.trim();
-                    updateHighlightsList();
-                }
-            }
-        }
-
-        // Button event listeners
-        document.getElementById('highlightBtn').addEventListener('click', addMockHighlight);
-
-        document.getElementById('selectAllBtn').addEventListener('click', function() {
-            navigator.clipboard.writeText(highlights.map(h => h.text).join('\n\n'));
-            this.innerHTML = '<span>✓</span>Copied!';
-            setTimeout(() => {
-                this.innerHTML = '<span>📋</span>Select All';
-            }, 2000);
-        });
-
-        document.getElementById('exportBtn').addEventListener('click', function() {
-            const data = highlights.map(h => `[${h.color.toUpperCase()}] ${h.text} (${h.timestamp})`).join('\n\n');
-            const blob = new Blob([data], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'highlights.txt';
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-
-        document.getElementById('clearAllBtn').addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all highlights?')) {
-                highlights = [];
-                updateHighlightsList();
-            }
-        });
-
-        // Initialize
-        updateHighlightsList();
-
-        // Enable highlight button for demo
-        setTimeout(() => {
-            document.getElementById('highlightBtn').disabled = false;
-        }, 1000);
-    </script>
+    <script src="popup.js"></script>
 </body>
 </html>
+

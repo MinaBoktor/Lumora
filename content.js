@@ -1,65 +1,54 @@
-// Enhanced content.js with modern highlighting features
+// Enhanced content.js with precise highlighting logic
 
 let pageHighlights = [];
-const pageURL = window.location.href.split('#')[0];
+const pageURL = window.location.href.split("#")[0];
 let highlightCounter = 0;
 let currentSettings = {
-  currentColor: 'yellow',
+  currentColor: "yellow",
   autoSave: true,
   showNotifications: true,
-  highlightStyle: 'modern'
+  highlightStyle: "modern",
 };
 
 // Color mapping for highlights
 const HIGHLIGHT_COLORS = {
-  yellow: { bg: '#fff3cd', border: '#ffd700', text: '#856404' },
-  green: { bg: '#d1f2eb', border: '#10b981', text: '#0d5744' },
-  blue: { bg: '#cce7ff', border: '#3b82f6', text: '#1e3a8a' },
-  pink: { bg: '#fce7f3', border: '#ec4899', text: '#831843' },
-  orange: { bg: '#fed7aa', border: '#f97316', text: '#9a3412' },
-  purple: { bg: '#e9d5ff', border: '#8b5cf6', text: '#5b21b6' }
+  yellow: { bg: "#fff3cd", border: "#ffd700", text: "#856404" },
+  green: { bg: "#d1f2eb", border: "#10b981", text: "#0d5744" },
+  blue: { bg: "#cce7ff", border: "#3b82f6", text: "#1e3a8a" },
+  pink: { bg: "#fce7f3", border: "#ec4899", text: "#831843" },
+  orange: { bg: "#fed7aa", border: "#f97316", text: "#9a3412" },
+  purple: { bg: "#e9d5ff", border: "#8b5cf6", text: "#5b21b6" },
 };
 
 // Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeHighlighter);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeHighlighter);
 } else {
   initializeHighlighter();
 }
 
 async function initializeHighlighter() {
-  await loadSettings();
-  await restoreHighlightsFromStorage();
-  setupEventListeners();
-  injectStyles();
-}
-
-function setupEventListeners() {
-  // Listen for selection changes to update context menu
-  document.addEventListener('selectionchange', handleSelectionChange);
-  
-  // Listen for clicks on highlights
-  document.addEventListener('click', handleHighlightClick);
-  
-  // Keyboard shortcuts
-  document.addEventListener('keydown', handleKeyboardShortcuts);
-}
-
-function handleSelectionChange() {
-  const selection = window.getSelection();
-  const selectedText = selection.toString().trim();
-  
-  // Update context menu availability based on selection
-  if (selectedText.length > 0) {
-    // Enable highlight-related context menu items
-    document.body.classList.add('has-selection');
-  } else {
-    document.body.classList.remove('has-selection');
+  try {
+    await loadSettings();
+    await restoreHighlightsFromStorage();
+    setupEventListeners();
+    injectStyles();
+    console.log("Lumora highlighter initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize highlighter:", error);
   }
 }
 
+function setupEventListeners() {
+  // Listen for clicks on highlights
+  document.addEventListener("click", handleHighlightClick);
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", handleKeyboardShortcuts);
+}
+
 function handleHighlightClick(event) {
-  const highlight = event.target.closest('.modern-highlight');
+  const highlight = event.target.closest(".lumora-highlight");
   if (highlight && event.ctrlKey) {
     // Ctrl+click to quickly remove highlight
     removeHighlightById(highlight.dataset.highlightId);
@@ -69,15 +58,15 @@ function handleHighlightClick(event) {
 
 function handleKeyboardShortcuts(event) {
   // Ctrl+Shift+H to highlight selection
-  if (event.ctrlKey && event.shiftKey && event.key === 'H') {
+  if (event.ctrlKey && event.shiftKey && event.key === "H") {
     event.preventDefault();
     highlightSelection();
   }
-  
+
   // Ctrl+Shift+C to clear all highlights
-  if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+  if (event.ctrlKey && event.shiftKey && event.key === "C") {
     event.preventDefault();
-    if (confirm('Clear all highlights on this page?')) {
+    if (confirm("Clear all highlights on this page?")) {
       clearAllHighlights();
     }
   }
@@ -85,174 +74,212 @@ function handleKeyboardShortcuts(event) {
 
 // Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("Content script received message:", request.action);
+  
+  if (request.action === "ping") {
+    console.log("Received ping from popup");
+    sendResponse({ status: "ready" });
+    return true;
+  }
+
   switch (request.action) {
     case "highlightSelectedText":
-      highlightSelection(request.color);
-      sendResponse({ success: true, highlights: pageHighlights });
-      break;
-      
+    case "highlightSelection":
+      console.log("Highlighting selection with color:", request.color);
+      highlightSelection(request.color)
+        .then((result) => {
+          console.log("Highlight result:", result);
+          sendResponse({ success: true, highlights: pageHighlights, highlight: result });
+        })
+        .catch((error) => {
+          console.error("Highlight error:", error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true; // Keep message channel open for async response
+
     case "clearAllHighlights":
       clearAllHighlights();
       sendResponse({ success: true });
       break;
-      
-    case "removeHighlightAtSelection":
-      removeHighlightAtSelection();
-      sendResponse({ success: true });
-      break;
-      
-    case "copySelectedHighlight":
-      copySelectedHighlight();
-      sendResponse({ success: true });
-      break;
-      
-    case "exportAllHighlights":
-      exportAllHighlights();
-      sendResponse({ success: true });
-      break;
-      
-    case "selectHighlightAtSelection":
-      selectHighlightAtSelection();
-      sendResponse({ success: true });
-      break;
-      
-    case "deselectHighlightAtSelection":
-      deselectHighlightAtSelection();
-      sendResponse({ success: true });
-      break;
-      
-    case "selectAllHighlights":
-      selectAllHighlights();
-      sendResponse({ success: true });
-      break;
-      
-    case "deselectAllHighlights":
-      deselectAllHighlights();
-      sendResponse({ success: true });
-      break;
-      
+
     case "getHighlights":
+      console.log("Sending highlights to popup:", pageHighlights.length);
       sendResponse({ highlights: pageHighlights });
       break;
-      
+
     case "jumpToHighlight":
       jumpToHighlight(request.id);
       sendResponse({ success: true });
       break;
-      
+
     case "removeHighlight":
       removeHighlightById(request.id);
       sendResponse({ success: true, highlights: pageHighlights });
       break;
+
+    default:
+      console.log("Unknown action:", request.action);
+      sendResponse({ success: false, error: "Unknown action" });
   }
 });
 
 async function highlightSelection(color = null) {
-  const selection = window.getSelection();
-  if (!selection || selection.isCollapsed) {
-    showNotification('Please select some text to illuminate', 'warning');
-    return;
-  }
-
-  const selectedText = selection.toString().trim();
-  if (selectedText.length === 0) return;
-
-  const range = selection.getRangeAt(0);
-  const highlightColor = color || currentSettings.currentColor;
-  
   try {
+    console.log("highlightSelection called with color:", color);
+    
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      showNotification("Please select some text to highlight", "warning");
+      return { success: false, message: "No selection" };
+    }
+
+    const selectedText = selection.toString();
+    if (!selectedText || selectedText.trim().length === 0) {
+      showNotification("Cannot highlight empty selection", "warning");
+      return { success: false, message: "Empty selection" };
+    }
+
+    console.log("Selected text:", selectedText);
+    console.log("Selection range count:", selection.rangeCount);
+
+    const range = selection.getRangeAt(0);
+    const highlightColor = color || currentSettings.currentColor;
+
     // Create unique highlight ID
     const highlightId = `highlight_${Date.now()}_${++highlightCounter}`;
-    
-    // Create highlight element
-    const highlightElement = document.createElement('span');
-    highlightElement.className = 'modern-highlight';
-    highlightElement.dataset.highlightId = highlightId;
-    highlightElement.dataset.color = highlightColor;
-    highlightElement.style.setProperty('--highlight-bg', HIGHLIGHT_COLORS[highlightColor].bg);
-    highlightElement.style.setProperty('--highlight-border', HIGHLIGHT_COLORS[highlightColor].border);
-    highlightElement.style.setProperty('--highlight-text', HIGHLIGHT_COLORS[highlightColor].text);
-    
-    // Add tooltip
-    highlightElement.title = `Illuminated on ${new Date().toLocaleString()}\nCtrl+Click to remove`;
-    
-    // Wrap the selected content
-    try {
-      range.surroundContents(highlightElement);
-    } catch (e) {
-      // Fallback for complex selections
-      const contents = range.extractContents();
-      highlightElement.appendChild(contents);
-      range.insertNode(highlightElement);
-    }
 
-    // Store highlight data
-    const highlightData = {
-      id: highlightId,
-      text: selectedText,
-      color: highlightColor,
-      timestamp: Date.now(),
-      xpath: getXPathForElement(highlightElement),
-      url: pageURL
-    };
+    // Use a more precise highlighting method
+    const success = await highlightRange(range, highlightId, highlightColor, selectedText.trim());
+    
+    if (success) {
+      // Store highlight data
+      const highlightData = {
+        id: highlightId,
+        text: selectedText.trim(),
+        color: highlightColor,
+        timestamp: Date.now(),
+        url: pageURL,
+      };
 
-    pageHighlights.push(highlightData);
-    
-    // Save to storage
-    if (currentSettings.autoSave) {
-      await saveHighlightsToStorage();
+      pageHighlights.push(highlightData);
+
+      // Save to storage
+      if (currentSettings.autoSave) {
+        await saveHighlightsToStorage();
+      }
+
+      // Clear selection
+      selection.removeAllRanges();
+
+      // Show notification
+      if (currentSettings.showNotifications) {
+        showNotification(`Text highlighted with ${highlightColor} color`, "success");
+      }
+
+      // Notify popup of update immediately
+      notifyHighlightsUpdated();
+
+      console.log("Highlight successful:", highlightData);
+      return { success: true, highlight: highlightData };
+    } else {
+      showNotification("Failed to highlight text", "error");
+      return { success: false, message: "Highlight failed" };
     }
-    
-    // Clear selection
-    selection.removeAllRanges();
-    
-    // Show notification
-    if (currentSettings.showNotifications) {
-      showNotification(`Text illuminated with ${highlightColor} color`, 'success');
-    }
-    
-    // Notify popup of update
-    notifyHighlightsUpdated();
-    
   } catch (error) {
-    console.error('Failed to highlight text:', error);
-    showNotification('Failed to illuminate text', 'error');
+    console.error("Failed to highlight text:", error);
+    showNotification("Failed to highlight text", "error");
+    return { success: false, error: error.message };
+  }
+}
+
+async function highlightRange(range, highlightId, color, text) {
+  try {
+    // Create highlight wrapper element
+    const highlightElement = document.createElement("span");
+    highlightElement.className = "lumora-highlight";
+    highlightElement.dataset.highlightId = highlightId;
+    highlightElement.dataset.color = color;
+    highlightElement.title = `Highlighted on ${new Date().toLocaleString()}\nCtrl+Click to remove`;
+    
+    // Apply only background styling - preserve all text properties
+    const colorConfig = HIGHLIGHT_COLORS[color];
+    highlightElement.style.backgroundColor = colorConfig.bg;
+    highlightElement.style.boxShadow = `0 0 0 1px ${colorConfig.border}`;
+    highlightElement.style.borderRadius = "2px";
+    
+    // Explicitly preserve text properties
+    highlightElement.style.color = "inherit";
+    highlightElement.style.fontSize = "inherit";
+    highlightElement.style.fontFamily = "inherit";
+    highlightElement.style.fontWeight = "inherit";
+    highlightElement.style.fontStyle = "inherit";
+    highlightElement.style.textDecoration = "inherit";
+    highlightElement.style.lineHeight = "inherit";
+    highlightElement.style.letterSpacing = "inherit";
+    highlightElement.style.wordSpacing = "inherit";
+    
+    // Minimal layout impact
+    highlightElement.style.display = "inline";
+    highlightElement.style.padding = "0";
+    highlightElement.style.margin = "0";
+    highlightElement.style.border = "none";
+
+    // Check if the range spans multiple elements or text nodes
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+
+    if (startContainer === endContainer && startContainer.nodeType === Node.TEXT_NODE) {
+      // Simple case: single text node
+      try {
+        range.surroundContents(highlightElement);
+        console.log("Successfully highlighted single text node");
+        return true;
+      } catch (e) {
+        console.log("surroundContents failed, trying extraction method");
+        const contents = range.extractContents();
+        highlightElement.appendChild(contents);
+        range.insertNode(highlightElement);
+        return true;
+      }
+    } else {
+      // Complex case: multiple nodes - use extraction method
+      try {
+        const contents = range.extractContents();
+        highlightElement.appendChild(contents);
+        range.insertNode(highlightElement);
+        console.log("Successfully highlighted multiple nodes");
+        return true;
+      } catch (e) {
+        console.error("Failed to highlight complex selection:", e);
+        return false;
+      }
+    }
+  } catch (error) {
+    console.error("Error in highlightRange:", error);
+    return false;
   }
 }
 
 function clearAllHighlights() {
   // Remove all highlight elements from DOM
-  document.querySelectorAll('.modern-highlight').forEach(element => {
+  document.querySelectorAll(".lumora-highlight").forEach((element) => {
     const parent = element.parentNode;
-    while (element.firstChild) {
-      parent.insertBefore(element.firstChild, element);
+    if (parent) {
+      while (element.firstChild) {
+        parent.insertBefore(element.firstChild, element);
+      }
+      parent.removeChild(element);
     }
-    parent.removeChild(element);
   });
-  
+
   // Clear data
   pageHighlights = [];
-  
+
   // Remove from storage
   chrome.storage.local.remove([pageURL]);
-  
-  showNotification('All illuminations cleared', 'info');
+
+  showNotification("All highlights cleared", "info");
   notifyHighlightsUpdated();
-}
-
-function removeHighlightAtSelection() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return;
-
-  const range = selection.getRangeAt(0);
-  const element = range.startContainer.nodeType === Node.TEXT_NODE 
-    ? range.startContainer.parentElement 
-    : range.startContainer;
-
-  const highlight = element.closest('.modern-highlight');
-  if (highlight) {
-    removeHighlightById(highlight.dataset.highlightId);
-  }
 }
 
 function removeHighlightById(highlightId) {
@@ -260,232 +287,81 @@ function removeHighlightById(highlightId) {
   if (element) {
     // Replace highlight with its text content
     const parent = element.parentNode;
-    while (element.firstChild) {
-      parent.insertBefore(element.firstChild, element);
+    if (parent) {
+      while (element.firstChild) {
+        parent.insertBefore(element.firstChild, element);
+      }
+      parent.removeChild(element);
     }
-    parent.removeChild(element);
-    
+
     // Remove from data
-    pageHighlights = pageHighlights.filter(h => h.id !== highlightId);
+    pageHighlights = pageHighlights.filter((h) => h.id !== highlightId);
     saveHighlightsToStorage();
     notifyHighlightsUpdated();
-    
-    showNotification('Illumination removed', 'info');
-  }
-}
 
-function copySelectedHighlight() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return;
-
-  const selectedText = selection.toString().trim();
-  if (selectedText) {
-    navigator.clipboard.writeText(selectedText).then(() => {
-      showNotification('Illumination copied to clipboard', 'success');
-    }).catch(() => {
-      showNotification('Failed to copy illumination', 'error');
-    });
+    showNotification("Highlight removed", "info");
   }
 }
 
 function jumpToHighlight(highlightId) {
   const element = document.querySelector(`[data-highlight-id="${highlightId}"]`);
   if (element) {
-    element.scrollIntoView({ 
-      behavior: 'smooth', 
-      block: 'center' 
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
     });
-    
+
     // Briefly flash the highlight
-    element.classList.add('flash-highlight');
+    element.style.animation = "flash 1s ease-in-out";
     setTimeout(() => {
-      element.classList.remove('flash-highlight');
-    }, 2000);
+      element.style.animation = "";
+    }, 1000);
   }
-}
-
-function exportAllHighlights() {
-  if (pageHighlights.length === 0) {
-    showNotification('No illuminations to export', 'warning');
-    return;
-  }
-
-  const exportData = {
-    url: pageURL,
-    title: document.title,
-    timestamp: new Date().toISOString(),
-    totalHighlights: pageHighlights.length,
-    highlights: pageHighlights.map(h => ({
-      text: h.text,
-      color: h.color,
-      timestamp: new Date(h.timestamp).toISOString(),
-      note: h.note || ''
-    }))
-  };
-
-  // Create and download file
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-    type: 'application/json' 
-  });
-  const url = URL.createObjectURL(blob);
-  
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `lumora-illuminations-${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  showNotification('Illuminations exported successfully', 'success');
-}
-
-function selectHighlightAtSelection() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return;
-
-  const range = selection.getRangeAt(0);
-  const element = range.startContainer.nodeType === Node.TEXT_NODE 
-    ? range.startContainer.parentElement 
-    : range.startContainer;
-
-  const highlight = element.closest('.modern-highlight');
-  if (highlight) {
-    // Add selected class
-    highlight.classList.add('lumora-selected');
-    showNotification('Illumination selected', 'info');
-  }
-}
-
-function deselectHighlightAtSelection() {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return;
-
-  const range = selection.getRangeAt(0);
-  const element = range.startContainer.nodeType === Node.TEXT_NODE 
-    ? range.startContainer.parentElement 
-    : range.startContainer;
-
-  const highlight = element.closest('.modern-highlight');
-  if (highlight) {
-    // Remove selected class
-    highlight.classList.remove('lumora-selected');
-    showNotification('Illumination deselected', 'info');
-  }
-}
-
-function selectAllHighlights() {
-  const highlights = document.querySelectorAll('.modern-highlight');
-  highlights.forEach(highlight => {
-    highlight.classList.add('lumora-selected');
-  });
-  
-  if (highlights.length > 0) {
-    showNotification(`${highlights.length} illuminations selected`, 'success');
-  } else {
-    showNotification('No illuminations to select', 'warning');
-  }
-}
-
-function deselectAllHighlights() {
-  const highlights = document.querySelectorAll('.modern-highlight.lumora-selected');
-  highlights.forEach(highlight => {
-    highlight.classList.remove('lumora-selected');
-  });
-  
-  if (highlights.length > 0) {
-    showNotification(`${highlights.length} illuminations deselected`, 'info');
-  } else {
-    showNotification('No illuminations were selected', 'warning');
-  }
-}
-
-// Utility functions
-function getXPathForElement(element) {
-  const parts = [];
-  let current = element;
-  
-  while (current && current.nodeType === Node.ELEMENT_NODE) {
-    let index = 1;
-    let sibling = current.previousSibling;
-    
-    while (sibling) {
-      if (sibling.nodeType === Node.ELEMENT_NODE && sibling.nodeName === current.nodeName) {
-        index++;
-      }
-      sibling = sibling.previousSibling;
-    }
-    
-    parts.unshift(`${current.nodeName}[${index}]`);
-    current = current.parentNode;
-  }
-  
-  return '/' + parts.join('/');
-}
-
-function getElementByXPath(xpath) {
-  return document.evaluate(
-    xpath, 
-    document, 
-    null, 
-    XPathResult.FIRST_ORDERED_NODE_TYPE, 
-    null
-  ).singleNodeValue;
 }
 
 async function saveHighlightsToStorage() {
   try {
+    if (!chrome.storage?.local) {
+      console.warn("chrome.storage.local not available");
+      return;
+    }
     const data = { [pageURL]: pageHighlights };
     await chrome.storage.local.set(data);
+    console.log("Highlights saved to storage:", pageHighlights.length);
   } catch (error) {
-    console.error('Failed to save highlights:', error);
+    console.error("Failed to save highlights:", error);
   }
 }
 
 async function restoreHighlightsFromStorage() {
   try {
     const result = await chrome.storage.local.get([pageURL]);
-    let savedHighlights = result[pageURL];
-    
-    // If Chrome storage is empty, try local backup
+    const savedHighlights = result[pageURL];
+
     if (!savedHighlights || savedHighlights.length === 0) {
-      savedHighlights = await restoreFromLocalBackup();
+      console.log("No saved highlights found");
+      return;
     }
-    
-    if (!savedHighlights || savedHighlights.length === 0) return;
+
+    console.log("Restoring highlights:", savedHighlights.length);
 
     // Wait a bit for page to fully load
     setTimeout(() => {
-      savedHighlights.forEach(highlight => {
+      savedHighlights.forEach((highlight) => {
         restoreHighlight(highlight);
       });
       pageHighlights = savedHighlights;
       notifyHighlightsUpdated();
     }, 500);
-    
   } catch (error) {
-    console.error('Failed to restore highlights:', error);
-    
-    // Try local backup as final fallback
-    try {
-      const backupHighlights = await restoreFromLocalBackup();
-      if (backupHighlights.length > 0) {
-        setTimeout(() => {
-          backupHighlights.forEach(highlight => {
-            restoreHighlight(highlight);
-          });
-          pageHighlights = backupHighlights;
-          notifyHighlightsUpdated();
-        }, 500);
-      }
-    } catch (backupError) {
-      console.error('Failed to restore from backup:', backupError);
-    }
+    console.error("Failed to restore highlights:", error);
   }
 }
 
 function restoreHighlight(highlightData) {
   try {
+    console.log("Restoring highlight:", highlightData.text);
+    
     // Find the text nodes that contain our highlighted text
     const walker = document.createTreeWalker(
       document.body,
@@ -495,268 +371,169 @@ function restoreHighlight(highlightData) {
     );
 
     let node;
-    while (node = walker.nextNode()) {
+    while ((node = walker.nextNode())) {
       const text = node.textContent;
       const index = text.indexOf(highlightData.text);
-      
+
       if (index !== -1) {
+        console.log("Found text to restore highlight:", highlightData.text);
+        
         // Create range for the found text
         const range = document.createRange();
         range.setStart(node, index);
         range.setEnd(node, index + highlightData.text.length);
-        
-        // Create highlight element
-        const highlightElement = document.createElement('span');
-        highlightElement.className = 'modern-highlight';
+
+        // Create highlight element with proper styling
+        const highlightElement = document.createElement("span");
+        highlightElement.className = "lumora-highlight";
         highlightElement.dataset.highlightId = highlightData.id;
         highlightElement.dataset.color = highlightData.color;
-        highlightElement.style.setProperty('--highlight-bg', HIGHLIGHT_COLORS[highlightData.color].bg);
-        highlightElement.style.setProperty('--highlight-border', HIGHLIGHT_COLORS[highlightData.color].border);
-        highlightElement.style.setProperty('--highlight-text', HIGHLIGHT_COLORS[highlightData.color].text);
-        highlightElement.title = `Illuminated on ${new Date(highlightData.timestamp).toLocaleString()}\nCtrl+Click to remove`;
+        highlightElement.title = `Highlighted on ${new Date(highlightData.timestamp).toLocaleString()}\nCtrl+Click to remove`;
         
+        // Apply the same styling as in highlightRange
+        const colorConfig = HIGHLIGHT_COLORS[highlightData.color];
+        highlightElement.style.backgroundColor = colorConfig.bg;
+        highlightElement.style.boxShadow = `0 0 0 1px ${colorConfig.border}`;
+        highlightElement.style.borderRadius = "2px";
+        
+        // Explicitly preserve text properties
+        highlightElement.style.color = "inherit";
+        highlightElement.style.fontSize = "inherit";
+        highlightElement.style.fontFamily = "inherit";
+        highlightElement.style.fontWeight = "inherit";
+        highlightElement.style.fontStyle = "inherit";
+        highlightElement.style.textDecoration = "inherit";
+        highlightElement.style.lineHeight = "inherit";
+        highlightElement.style.letterSpacing = "inherit";
+        highlightElement.style.wordSpacing = "inherit";
+        
+        // Minimal layout impact
+        highlightElement.style.display = "inline";
+        highlightElement.style.padding = "0";
+        highlightElement.style.margin = "0";
+        highlightElement.style.border = "none";
+
         try {
           range.surroundContents(highlightElement);
-          break; // Found and restored, exit loop
+          console.log("Successfully restored highlight:", highlightData.id);
         } catch (e) {
-          // If surroundContents fails, try extraction method
+          // Fallback method
           const contents = range.extractContents();
           highlightElement.appendChild(contents);
           range.insertNode(highlightElement);
-          break;
+          console.log("Successfully restored highlight using fallback method:", highlightData.id);
         }
+        
+        break; // Found and restored, exit loop
       }
     }
   } catch (error) {
-    console.error('Failed to restore highlight:', error);
+    console.error("Failed to restore highlight:", error);
   }
 }
 
 async function loadSettings() {
   try {
-    const result = await chrome.storage.local.get(['highlighterSettings']);
+    const result = await chrome.storage.local.get(["highlighterSettings"]);
     if (result.highlighterSettings) {
       currentSettings = { ...currentSettings, ...result.highlighterSettings };
     }
+    console.log("Settings loaded:", currentSettings);
   } catch (error) {
-    console.error('Failed to load settings:', error);
+    console.error("Failed to load settings:", error);
   }
 }
 
-function showNotification(message, type = 'info') {
+function showNotification(message, type = "info") {
   if (!currentSettings.showNotifications) return;
-  
+
+  console.log("Showing notification:", message, type);
+
   // Remove existing notifications
-  document.querySelectorAll('.highlight-notification').forEach(n => n.remove());
-  
-  const notification = document.createElement('div');
-  notification.className = `highlight-notification ${type}`;
-  notification.textContent = message;
+  document.querySelectorAll(".lumora-notification").forEach((n) => n.remove());
+
+  const notification = document.createElement("div");
+  notification.className = `lumora-notification ${type}`;
   
   const styles = {
-    info: { bg: '#3b82f6', icon: 'ℹ️' },
-    success: { bg: '#10b981', icon: '✅' },
-    warning: { bg: '#f59e0b', icon: '⚠️' },
-    error: { bg: '#ef4444', icon: '❌' }
+    info: { bg: "#3b82f6", icon: "ℹ️" },
+    success: { bg: "#10b981", icon: "✅" },
+    warning: { bg: "#f59e0b", icon: "⚠️" },
+    error: { bg: "#ef4444", icon: "❌" },
   };
-  
+
   const style = styles[type] || styles.info;
   notification.innerHTML = `${style.icon} ${message}`;
-  
+
   Object.assign(notification.style, {
-    position: 'fixed',
-    top: '20px',
-    right: '20px',
+    position: "fixed",
+    bottom: "20px",
+    left: "20px",
     background: style.bg,
-    color: 'white',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '500',
-    zIndex: '999999',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-    animation: 'slideInRight 0.3s ease',
-    maxWidth: '300px',
-    wordWrap: 'break-word'
+    color: "white",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "500",
+    zIndex: "999999",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    maxWidth: "300px",
+    wordWrap: "break-word",
   });
-  
+
   document.body.appendChild(notification);
-  
+
   setTimeout(() => {
-    notification.style.animation = 'slideOutRight 0.3s ease';
-    setTimeout(() => notification.remove(), 300);
+    notification.remove();
   }, 3000);
 }
 
 function notifyHighlightsUpdated() {
-  // Notify popup of highlights update
-  chrome.runtime.sendMessage({
-    action: 'highlightsUpdated',
-    highlights: pageHighlights
-  }).catch(() => {
-    // Popup might not be open, ignore error
-  });
+  console.log("Notifying highlights updated:", pageHighlights.length);
+  
+  if (!chrome.runtime?.id) {
+    console.warn("Extension context invalidated");
+    return;
+  }
+
+  // Send message to popup immediately
+  try {
+    chrome.runtime.sendMessage({
+      action: "highlightsUpdated",
+      highlights: pageHighlights,
+    }).then(() => {
+      console.log("Highlights update message sent successfully");
+    }).catch((error) => {
+      console.log("Failed to send highlights update (popup might be closed):", error.message);
+    });
+  } catch (error) {
+    console.log("Failed to send highlights update:", error.message);
+  }
 }
 
 function injectStyles() {
-  if (document.getElementById('modern-highlighter-styles')) return;
-  
-  const style = document.createElement('style');
-  style.id = 'modern-highlighter-styles';
+  if (document.getElementById("lumora-highlighter-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "lumora-highlighter-styles";
   style.textContent = `
-    @keyframes slideInRight {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+    .lumora-highlight {
+      cursor: pointer;
+      transition: opacity 0.2s ease;
     }
     
-    @keyframes slideOutRight {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(100%); opacity: 0; }
+    .lumora-highlight:hover {
+      opacity: 0.8;
     }
     
-    @keyframes flashHighlight {
-      0%, 100% { background-color: var(--highlight-bg); }
-      50% { background-color: var(--highlight-border); }
-    }
-    
-    .flash-highlight {
-      animation: flashHighlight 0.5s ease 4;
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
   `;
-  
+
   document.head.appendChild(style);
 }
 
-async function saveHighlightsToStorage() {
-  try {
-    if (!chrome.storage?.local) {
-      console.warn('chrome.storage.local not available');
-      return;
-    }
-    const data = { [pageURL]: pageHighlights };
-    await chrome.storage.local.set(data);
-    
-    // Also save to local file system for backup
-    await saveHighlightsToLocalFile();
-  } catch (error) {
-    console.error('Failed to save highlights:', error);
-  }
-}
+console.log("Lumora content script loaded");
 
-async function saveHighlightsToLocalFile() {
-  try {
-    // Create backup data
-    const backupData = {
-      url: pageURL,
-      title: document.title,
-      timestamp: new Date().toISOString(),
-      highlights: pageHighlights
-    };
-    
-    // Save to localStorage as backup
-    const backupKey = `lumora_backup_${btoa(pageURL).slice(0, 20)}`;
-    localStorage.setItem(backupKey, JSON.stringify(backupData));
-    
-    // Also try to save to IndexedDB for better persistence
-    try {
-      await saveToIndexedDB(backupKey, backupData);
-    } catch (idbError) {
-      console.log('IndexedDB save failed, using localStorage only:', idbError);
-    }
-    
-  } catch (error) {
-    console.error('Failed to save local backup:', error);
-  }
-}
-
-async function saveToIndexedDB(key, data) {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('LumoraBackups', 1);
-    
-    request.onerror = () => reject(request.error);
-    
-    request.onsuccess = () => {
-      const db = request.result;
-      const transaction = db.transaction(['backups'], 'readwrite');
-      const store = transaction.objectStore('backups');
-      
-      const putRequest = store.put({ id: key, data: data, timestamp: Date.now() });
-      putRequest.onsuccess = () => resolve();
-      putRequest.onerror = () => reject(putRequest.error);
-    };
-    
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains('backups')) {
-        const store = db.createObjectStore('backups', { keyPath: 'id' });
-        store.createIndex('timestamp', 'timestamp', { unique: false });
-      }
-    };
-  });
-}
-
-// Add function to restore from local backup if Chrome storage fails
-async function restoreFromLocalBackup() {
-  try {
-    const backupKey = `lumora_backup_${btoa(pageURL).slice(0, 20)}`;
-    
-    // Try IndexedDB first
-    try {
-      const idbData = await getFromIndexedDB(backupKey);
-      if (idbData && idbData.highlights) {
-        return idbData.highlights;
-      }
-    } catch (idbError) {
-      console.log('IndexedDB restore failed, trying localStorage:', idbError);
-    }
-    
-    // Fallback to localStorage
-    const localData = localStorage.getItem(backupKey);
-    if (localData) {
-      const parsed = JSON.parse(localData);
-      return parsed.highlights || [];
-    }
-    
-    return [];
-  } catch (error) {
-    console.error('Failed to restore from local backup:', error);
-    return [];
-  }
-}
-
-async function getFromIndexedDB(key) {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('LumoraBackups', 1);
-    
-    request.onerror = () => reject(request.error);
-    
-    request.onsuccess = () => {
-      const db = request.result;
-      const transaction = db.transaction(['backups'], 'readonly');
-      const store = transaction.objectStore('backups');
-      
-      const getRequest = store.get(key);
-      getRequest.onsuccess = () => {
-        const result = getRequest.result;
-        resolve(result ? result.data : null);
-      };
-      getRequest.onerror = () => reject(getRequest.error);
-    };
-  });
-}
-
-function notifyHighlightsUpdated() {
-  if (!chrome.runtime?.id) {
-    // Extension context invalidated
-    return;
-  }
-  
-  // Debounce notifications to prevent flickering
-  clearTimeout(notifyHighlightsUpdated.timeout);
-  notifyHighlightsUpdated.timeout = setTimeout(() => {
-    chrome.runtime.sendMessage({
-      action: 'highlightsUpdated',
-      highlights: pageHighlights
-    }).catch(() => {});
-  }, 100);
-}

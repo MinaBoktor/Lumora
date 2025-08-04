@@ -1,635 +1,439 @@
-// Lumora Popup JavaScript - Modified to work with existing HTML structure
+document.addEventListener("DOMContentLoaded", function () {
+  // DOM Elements
+  const highlightBtn = document.getElementById("highlightBtn");
+  const colorIndicator = document.getElementById("colorIndicator");
+  const highlightsList = document.getElementById("highlightsList");
+  const emptyState = document.getElementById("emptyState");
+  const highlightCount = document.getElementById("highlightCount");
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+  const settingsToggle = document.getElementById("settingsToggle");
+  const settingsContent = document.getElementById("settingsContent");
+  const colorOptions = document.querySelectorAll(".color-option");
+  const toggleSwitches = document.querySelectorAll(".toggle-switch");
 
-class LumoraPopup {
-    constructor() {
-        this.currentTab = null;
-        this.highlights = [];
-        this.settings = {
-            currentColor: 'yellow',
-            autoSave: true,
-            showNotifications: true
-        };
-        
-        this.init();
+  // State
+  let selectedColor = "yellow";
+  let highlights = [];
+  let settingsOpen = false;
+  let autoSaveEnabled = true;
+  let notificationsEnabled = true;
+  let currentTabId = null;
+
+  // Initialize
+  loadSettings();
+  setupEventListeners();
+  checkContentScriptReady();
+  getCurrentTabHighlights();
+
+  // Event Listeners
+  function setupEventListeners() {
+    // Color picker
+    colorOptions.forEach((option) => {
+      option.addEventListener("click", handleColorSelection);
+    });
+
+    // Settings toggle
+    settingsToggle.addEventListener("click", toggleSettings);
+
+    // Toggle switches
+    toggleSwitches.forEach((toggle) => {
+      toggle.addEventListener("click", handleToggleSwitch);
+    });
+
+    // Highlight button
+    highlightBtn.addEventListener("click", captureHighlight);
+
+    // Bottom action buttons
+    selectAllBtn.addEventListener("click", copyAllHighlights);
+    exportBtn.addEventListener("click", exportHighlights);
+    clearAllBtn.addEventListener("click", clearAllHighlights);
+  }
+
+  // Color selection handler
+  function handleColorSelection(e) {
+    colorOptions.forEach((opt) => opt.classList.remove("active"));
+    e.target.classList.add("active");
+    selectedColor = e.target.dataset.color;
+    colorIndicator.className = `current-color-indicator color-${selectedColor}`;
+    saveSettings();
+  }
+
+  // Settings toggle handler
+  function toggleSettings() {
+    settingsOpen = !settingsOpen;
+    settingsContent.classList.toggle("open", settingsOpen);
+  }
+
+  // Toggle switch handler
+  function handleToggleSwitch(e) {
+    const toggle = e.currentTarget;
+    toggle.classList.toggle("active");
+
+    if (toggle.id === "autoSaveToggle") {
+      autoSaveEnabled = toggle.classList.contains("active");
+    } else if (toggle.id === "notificationsToggle") {
+      notificationsEnabled = toggle.classList.contains("active");
     }
 
-    async init() {
-        await this.getCurrentTab();
-        await this.loadSettings();
-        await this.loadHighlights();
-        this.setupEventListeners();
-        this.updateUI();
-        this.checkSelection();
-    }
+    saveSettings();
+  }
 
-    async getCurrentTab() {
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            this.currentTab = tab;
-        } catch (error) {
-            console.error('Failed to get current tab:', error);
-        }
-    }
+  // Capture highlight from active tab
+  function captureHighlight() {
+    const highlightBtn = document.getElementById("highlightBtn");
+    highlightBtn.disabled = true; // Disable while processing
 
-    async loadSettings() {
-        try {
-            const result = await chrome.storage.local.get(['highlighterSettings']);
-            if (result.highlighterSettings) {
-                this.settings = { ...this.settings, ...result.highlighterSettings };
-            }
-        } catch (error) {
-            console.error('Failed to load settings:', error);
-        }
-    }
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (!tabs.length) {
+        showNotification("No active tab found");
+        highlightBtn.disabled = false;
+        return;
+      }
 
-    async saveSettings() {
-        try {
-            await chrome.storage.local.set({ highlighterSettings: this.settings });
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-        }
-    }
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        {
+          action: "highlightSelection",
+          color: selectedColor,
+        },
+        function (response) {
+          highlightBtn.disabled = false; // Re-enable button
 
-    async loadHighlights() {
-        if (!this.currentTab) return;
-        
-        try {
-            const response = await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'getHighlights'
-            });
-            
-            if (response && response.highlights) {
-                this.highlights = response.highlights;
-                this.updateHighlightsList();
-                this.updateHighlightCount();
-            }
-        } catch (error) {
-            console.error('Failed to load highlights:', error);
-            this.highlights = [];
-        }
-    }
-
-    setupEventListeners() {
-        // Color palette
-        document.querySelectorAll('.color-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                this.selectColor(e.target.dataset.color);
-            });
-        });
-
-        // Main highlight button
-        const highlightBtn = document.getElementById('highlightBtn');
-        if (highlightBtn) {
-            highlightBtn.addEventListener('click', () => {
-                this.highlightSelection();
-            });
-        }
-
-        // Action buttons
-        const selectAllBtn = document.getElementById('selectAllBtn');
-        if (selectAllBtn) {
-            selectAllBtn.addEventListener('click', () => {
-                this.selectAllHighlights();
-            });
-        }
-
-        const exportBtn = document.getElementById('exportBtn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                this.exportHighlights();
-            });
-        }
-
-        const clearAllBtn = document.getElementById('clearAllBtn');
-        if (clearAllBtn) {
-            clearAllBtn.addEventListener('click', () => {
-                this.clearAllHighlights();
-            });
-        }
-
-        // Settings toggle
-        const settingsToggle = document.getElementById('settingsToggle');
-        if (settingsToggle) {
-            settingsToggle.addEventListener('click', () => {
-                this.toggleSettings();
-            });
-        }
-
-        // Settings controls
-        const autoSaveToggle = document.getElementById('autoSaveToggle');
-        if (autoSaveToggle) {
-            autoSaveToggle.addEventListener('click', () => {
-                this.settings.autoSave = !this.settings.autoSave;
-                this.saveSettings();
-                this.updateUI();
-            });
-        }
-
-        const notificationsToggle = document.getElementById('notificationsToggle');
-        if (notificationsToggle) {
-            notificationsToggle.addEventListener('click', () => {
-                this.settings.showNotifications = !this.settings.showNotifications;
-                this.saveSettings();
-                this.updateUI();
-            });
-        }
-
-        // Listen for messages from content script
-        if (chrome.runtime && chrome.runtime.onMessage) {
-            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-                if (request.action === 'highlightsUpdated') {
-                    this.highlights = request.highlights || [];
-                    this.updateHighlightsList();
-                    this.updateHighlightCount();
-                }
-            });
-        }
-
-        // Check for selection changes
-        setInterval(() => {
-            this.checkSelection();
-        }, 500);
-    }
-
-    selectColor(color) {
-        // Update active color
-        document.querySelectorAll('.color-option').forEach(option => {
-            option.classList.remove('active');
-        });
-        const selectedOption = document.querySelector(`[data-color="${color}"]`);
-        if (selectedOption) {
-            selectedOption.classList.add('active');
-        }
-        
-        // Update color indicator on button
-        const indicator = document.getElementById('colorIndicator');
-        if (indicator) {
-            indicator.className = `current-color-indicator color-${color}`;
-        }
-        
-        // Save setting
-        this.settings.currentColor = color;
-        this.saveSettings();
-    }
-
-    async checkSelection() {
-        if (!this.currentTab) return;
-        
-        try {
-            if (chrome.scripting) {
-                const [result] = await chrome.scripting.executeScript({
-                    target: { tabId: this.currentTab.id },
-                    function: () => {
-                        const selection = window.getSelection();
-                        return selection && !selection.isCollapsed && selection.toString().trim().length > 0;
-                    }
-                });
-                
-                const hasSelection = result?.result || false;
-                const highlightBtn = document.getElementById('highlightBtn');
-                if (highlightBtn) {
-                    highlightBtn.disabled = !hasSelection;
-                }
-            }
-        } catch (error) {
-            // Page might not support script injection or we're in demo mode
-            const highlightBtn = document.getElementById('highlightBtn');
-            if (highlightBtn) {
-                highlightBtn.disabled = false;
-            }
-        }
-    }
-
-    async highlightSelection() {
-        if (!this.currentTab) {
-            // Demo mode - add a mock highlight
-            this.addMockHighlight();
+          if (chrome.runtime.lastError) {
+            console.error("Highlight error:", chrome.runtime.lastError);
+            showNotification(
+              "Could not highlight. Please refresh the page and try again."
+            );
             return;
-        }
-        
-        try {
-            const response = await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'highlightSelectedText',
-                color: this.settings.currentColor
-            });
-            
-            if (response && response.success) {
-                this.highlights = response.highlights || [];
-                this.updateHighlightsList();
-                this.updateHighlightCount();
-                
-                if (this.settings.showNotifications) {
-                    this.showNotification('Text highlighted successfully!', 'success');
-                }
-            }
-        } catch (error) {
-            console.error('Failed to highlight text:', error);
-            // Fallback to demo mode
-            this.addMockHighlight();
-        }
-    }
+          }
 
-    addMockHighlight() {
-        const mockTexts = [
-            "Revolutionary insights that will change how we think about productivity and creativity.",
-            "The key to success lies in understanding fundamental principles of human behavior.",
-            "This breakthrough discovery opens new possibilities for innovation and growth.",
-            "Remember: the most powerful tool for change is consistent action with clear vision.",
-            "Innovation happens when we combine existing ideas in unexpected ways.",
-            "The future belongs to those who can adapt quickly to changing circumstances."
-        ];
-        
-        const randomText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
-        
-        const newHighlight = {
-            id: Date.now().toString(),
-            text: randomText,
-            color: this.settings.currentColor,
-            timestamp: Date.now(),
-            url: this.currentTab?.url || 'demo-page'
-        };
-        
-        this.highlights.push(newHighlight);
-        this.updateHighlightsList();
-        this.updateHighlightCount();
-        
-        if (this.settings.showNotifications) {
-            this.showNotification('Demo highlight added!', 'success');
+          if (response && response.success) {
+            // Highlights are now updated via the highlightsUpdated message
+            showNotification("Highlight saved!");
+          } else {
+            showNotification("Please select text to highlight first.");
+          }
         }
-    }
+      );
+    });
+  }
 
-    async selectAllHighlights() {
-        try {
-            const allText = this.highlights.map(h => h.text).join('\n\n');
-            
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(allText);
-                this.showTemporaryButtonText('selectAllBtn', '✓ Copied!', '📋 Select All');
-                
-                if (this.settings.showNotifications) {
-                    this.showNotification('All highlights copied to clipboard!', 'success');
-                }
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = allText;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                
-                this.showTemporaryButtonText('selectAllBtn', '✓ Copied!', '📋 Select All');
-            }
-        } catch (error) {
-            console.error('Failed to copy highlights:', error);
-            this.showNotification('Failed to copy highlights', 'error');
-        }
-    }
+  // Update the highlights list UI
+  function updateHighlightsList() {
+    highlightCount.textContent = highlights.length;
 
-    async exportHighlights() {
-        if (this.highlights.length === 0) {
-            this.showNotification('No highlights to export', 'warning');
-            return;
-        }
-        
-        try {
-            // Create export data
-            const exportData = {
-                url: this.currentTab?.url || 'demo-page',
-                title: this.currentTab?.title || 'Demo Page',
-                timestamp: new Date().toISOString(),
-                highlights: this.highlights.map(h => ({
-                    text: h.text,
-                    color: h.color,
-                    timestamp: new Date(h.timestamp).toISOString()
-                }))
-            };
+    if (highlights.length === 0) {
+      emptyState.style.display = "flex";
+      highlightsList.innerHTML = "";
+      [selectAllBtn, exportBtn, clearAllBtn].forEach((btn) => {
+        btn.disabled = true;
+      });
+    } else {
+      emptyState.style.display = "none";
+      [selectAllBtn, exportBtn, clearAllBtn].forEach((btn) => {
+        btn.disabled = false;
+      });
 
-            // Create text export
-            const txtContent = this.createTextExport(exportData);
-            this.downloadFile(txtContent, 'text/plain', 'txt');
-            
-            if (this.settings.showNotifications) {
-                this.showNotification('Highlights exported successfully!', 'success');
-            }
-        } catch (error) {
-            console.error('Failed to export highlights:', error);
-            this.showNotification('Failed to export highlights', 'error');
-        }
-    }
-
-    async clearAllHighlights() {
-        if (this.highlights.length === 0) {
-            this.showNotification('No highlights to clear', 'warning');
-            return;
-        }
-        
-        const confirmed = confirm('Clear all highlights? This action cannot be undone.');
-        if (!confirmed) return;
-        
-        try {
-            if (this.currentTab && chrome.tabs) {
-                await chrome.tabs.sendMessage(this.currentTab.id, {
-                    action: 'clearAllHighlights'
-                });
-            }
-            
-            this.highlights = [];
-            this.updateHighlightsList();
-            this.updateHighlightCount();
-            
-            if (this.settings.showNotifications) {
-                this.showNotification('All highlights cleared', 'success');
-            }
-        } catch (error) {
-            console.error('Failed to clear highlights:', error);
-            // Clear local highlights anyway
-            this.highlights = [];
-            this.updateHighlightsList();
-            this.updateHighlightCount();
-        }
-    }
-
-    async jumpToHighlight(highlightId) {
-        if (!this.currentTab) return;
-        
-        try {
-            await chrome.tabs.sendMessage(this.currentTab.id, {
-                action: 'jumpToHighlight',
-                id: highlightId
-            });
-            
-            // Close popup after jumping
-            window.close();
-        } catch (error) {
-            console.error('Failed to jump to highlight:', error);
-        }
-    }
-
-    async removeHighlight(highlightId) {
-        try {
-            if (this.currentTab && chrome.tabs) {
-                const response = await chrome.tabs.sendMessage(this.currentTab.id, {
-                    action: 'removeHighlight',
-                    id: highlightId
-                });
-                
-                if (response && response.success) {
-                    this.highlights = response.highlights || [];
-                }
-            } else {
-                // Local removal for demo mode
-                this.highlights = this.highlights.filter(h => h.id !== highlightId);
-            }
-            
-            this.updateHighlightsList();
-            this.updateHighlightCount();
-            
-            if (this.settings.showNotifications) {
-                this.showNotification('Highlight removed', 'success');
-            }
-        } catch (error) {
-            console.error('Failed to remove highlight:', error);
-            // Fallback to local removal
-            this.highlights = this.highlights.filter(h => h.id !== highlightId);
-            this.updateHighlightsList();
-            this.updateHighlightCount();
-        }
-    }
-
-    // UI Update Methods
-    updateUI() {
-        // Update settings UI
-        const autoSaveToggle = document.getElementById('autoSaveToggle');
-        if (autoSaveToggle) {
-            autoSaveToggle.classList.toggle('active', this.settings.autoSave);
-        }
-
-        const notificationsToggle = document.getElementById('notificationsToggle');
-        if (notificationsToggle) {
-            notificationsToggle.classList.toggle('active', this.settings.showNotifications);
-        }
-        
-        // Update color selection
-        document.querySelectorAll('.color-option').forEach(option => {
-            option.classList.remove('active');
-        });
-        const selectedOption = document.querySelector(`[data-color="${this.settings.currentColor}"]`);
-        if (selectedOption) {
-            selectedOption.classList.add('active');
-        }
-
-        // Update color indicator
-        const indicator = document.getElementById('colorIndicator');
-        if (indicator) {
-            indicator.className = `current-color-indicator color-${this.settings.currentColor}`;
-        }
-        
-        // Update button states
-        this.updateButtonStates();
-    }
-
-    updateButtonStates() {
-        const hasHighlights = this.highlights.length > 0;
-        
-        const selectAllBtn = document.getElementById('selectAllBtn');
-        if (selectAllBtn) selectAllBtn.disabled = !hasHighlights;
-        
-        const exportBtn = document.getElementById('exportBtn');
-        if (exportBtn) exportBtn.disabled = !hasHighlights;
-        
-        const clearAllBtn = document.getElementById('clearAllBtn');
-        if (clearAllBtn) clearAllBtn.disabled = !hasHighlights;
-    }
-
-    updateHighlightCount() {
-        const countElement = document.getElementById('highlightCount');
-        if (countElement) {
-            countElement.textContent = this.highlights.length;
-        }
-        this.updateButtonStates();
-    }
-
-    updateHighlightsList() {
-        const container = document.getElementById('highlightsList');
-        const emptyState = document.getElementById('emptyState');
-        
-        if (!container) return;
-        
-        if (this.highlights.length === 0) {
-            if (emptyState) emptyState.style.display = 'flex';
-            container.innerHTML = '';
-            return;
-        }
-        
-        if (emptyState) emptyState.style.display = 'none';
-        
-        container.innerHTML = this.highlights.map((highlight, index) => {
-            const previewText = highlight.text.length > 150 
-                ? highlight.text.substring(0, 150) + '...' 
-                : highlight.text;
-            
-            const timeString = new Date(highlight.timestamp).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-            
-            return `
-                <div class="highlight-item color-${highlight.color}" style="animation-delay: ${index * 0.05}s">
-                    <div class="highlight-text">${previewText}</div>
+      highlightsList.innerHTML = highlights
+        .map(
+          (highlight, index) => `
+                <div class="highlight-item fade-in color-${
+            highlight.color
+          }" style="animation-delay: ${index * 0.05}s">
+                    <div class="highlight-text">${escapeHtml(
+            highlight.text
+          )}</div>
                     <div class="highlight-meta">
-                        <span>${timeString}</span>
+                        <span>${
+            highlight.timestamp
+              ? new Date(highlight.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "N/A"
+          }</span>
                         <div class="highlight-actions">
-                            <button class="action-icon" onclick="window.lumoraPopup.editHighlight('${highlight.id}')" title="Edit">✏️</button>
-                            <button class="action-icon" onclick="window.lumoraPopup.removeHighlight('${highlight.id}')" title="Delete">🗑️</button>
+                            <button class="action-icon jump-to-highlight" data-id="${
+            highlight.id
+          }" title="Jump to Highlight">🔗</button>
+                            <button class="action-icon remove-highlight" data-id="${
+            highlight.id
+          }" title="Remove Highlight">🗑️</button>
                         </div>
                     </div>
                 </div>
-            `;
-        }).join('');
-    }
+            `
+        )
+        .join("");
 
-    editHighlight(highlightId) {
-        const highlight = this.highlights.find(h => h.id === highlightId);
-        if (!highlight) return;
-        
-        const newText = prompt('Edit highlight:', highlight.text);
-        if (newText && newText.trim()) {
-            highlight.text = newText.trim();
-            this.updateHighlightsList();
-            
-            if (this.settings.showNotifications) {
-                this.showNotification('Highlight updated', 'success');
-            }
-        }
+      // Add event listeners to action buttons
+      document.querySelectorAll(".jump-to-highlight").forEach((btn) => {
+        btn.addEventListener("click", () => jumpToHighlight(btn.dataset.id));
+      });
+      document.querySelectorAll(".remove-highlight").forEach((btn) => {
+        btn.addEventListener("click", () => removeHighlight(btn.dataset.id));
+      });
     }
+  }
 
-    toggleSettings() {
-        const settingsContent = document.getElementById('settingsContent');
-        if (settingsContent) {
-            settingsContent.classList.toggle('open');
-        }
+  // Escape HTML to prevent XSS
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Jump to a highlight on the page
+  function jumpToHighlight(id) {
+    if (currentTabId) {
+      chrome.tabs.sendMessage(currentTabId, {
+        action: "jumpToHighlight",
+        id: id,
+      });
+      window.close(); // Close popup after jumping
     }
+  }
 
-    showNotification(message, type = 'info') {
-        // Create a simple notification system
-        const existing = document.querySelector('.lumora-notification');
-        if (existing) existing.remove();
-        
-        const notification = document.createElement('div');
-        notification.className = 'lumora-notification';
-        
-        const colors = {
-            success: '#28a745',
-            error: '#dc3545',
-            warning: '#ffc107',
-            info: '#17a2b8'
-        };
-        
-        notification.style.cssText = `
-            position: fixed;
-            top: 70px;
-            left: 20px;
-            right: 20px;
-            background: ${colors[type] || colors.info};
-            color: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            z-index: 10000;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            animation: slideIn 0.3s ease-out;
-        `;
-        
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        
+  // Remove a highlight
+  function removeHighlight(id) {
+    if (currentTabId) {
+      chrome.tabs.sendMessage(currentTabId, {
+        action: "removeHighlight",
+        id: id,
+      });
+      // The highlightsUpdated message will refresh the list
+    }
+  }
+
+  // Copy all highlights to clipboard
+  function copyAllHighlights() {
+    const textToCopy = highlights.map((h) => h.text).join("\n\n");
+    navigator.clipboard
+      .writeText(textToCopy)
+      .then(() => {
+        selectAllBtn.innerHTML = "<span>✓</span>Copied!";
         setTimeout(() => {
-            notification.remove();
-        }, 3000);
-    }
-
-    showTemporaryButtonText(buttonId, tempText, originalText) {
-        const button = document.getElementById(buttonId);
-        if (!button) return;
-        
-        button.innerHTML = `<span>${tempText.split(' ')[0]}</span>${tempText.split(' ').slice(1).join(' ')}`;
-        setTimeout(() => {
-            button.innerHTML = `<span>${originalText.split(' ')[0]}</span>${originalText.split(' ').slice(1).join(' ')}`;
+          selectAllBtn.innerHTML = "<span>📋</span>Select All";
         }, 2000);
-    }
+        showNotification("All highlights copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy:", err);
+        showNotification("Failed to copy highlights.");
+      });
+  }
 
-    // Export utility methods
-    createTextExport(exportData) {
-        let content = `LUMORA HIGHLIGHTS EXPORT\n`;
-        content += `=========================\n\n`;
-        content += `Website: ${exportData.url}\n`;
-        content += `Page Title: ${exportData.title}\n`;
-        content += `Exported: ${new Date(exportData.timestamp).toLocaleString()}\n`;
-        content += `Total Highlights: ${exportData.highlights.length}\n\n`;
-        
-        exportData.highlights.forEach((highlight, index) => {
-            content += `--- Highlight ${index + 1} ---\n`;
-            content += `Text: "${highlight.text}"\n`;
-            content += `Color: ${highlight.color}\n`;
-            content += `Date: ${highlight.timestamp}\n\n`;
-        });
-        
-        return content;
-    }
+  // Export highlights to file
+  function exportHighlights() {
+    const data = highlights
+      .map(
+        (h) =>
+          `[${h.color.toUpperCase()}] ${h.text} (${
+            h.timestamp
+              ? new Date(h.timestamp).toLocaleString()
+              : "N/A"
+          })${h.url ? `\nURL: ${h.url}` : ""}`
+      )
+      .join("\n\n");
 
-    downloadFile(content, mimeType, extension) {
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        
-        let filename = 'lumora-highlights';
-        if (this.currentTab?.url) {
-            try {
-                const hostname = new URL(this.currentTab.url).hostname;
-                filename += `-${hostname}`;
-            } catch (e) {
-                // Invalid URL, use default
-            }
+    const blob = new Blob([data], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lumora-highlights-${new Date()
+      .toISOString()
+      .split("T")[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification("Highlights exported!");
+  }
+
+  // Clear all highlights
+  function clearAllHighlights() {
+    if (
+      confirm("Are you sure you want to clear all highlights? This cannot be undone.")
+    ) {
+      // Clear from content script
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        if (tabs.length) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: "clearAllHighlights",
+          });
         }
-        filename += `-${new Date().toISOString().split('T')[0]}.${extension}`;
-        
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-}
+      });
 
-// Add CSS for animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+      highlights = [];
+      updateHighlightsList();
+      // No need to saveHighlights() here, content script will handle storage update
+      showNotification("All highlights cleared.");
     }
-`;
-document.head.appendChild(style);
+  }
 
-// Initialize popup when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.lumoraPopup = new LumoraPopup();
+  // Show notification
+  function showNotification(message) {
+    if (!notificationsEnabled) return;
+
+    const notification = document.createElement("div");
+    notification.className = "notification";
+    notification.textContent = message;
+    notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #343A40;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-in-out;
+            font-size: 12px;
+        `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.animation = "fadeOut 0.3s ease-in-out";
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  // Save settings to chrome.storage
+  function saveSettings() {
+    const settings = {
+      selectedColor,
+      autoSaveEnabled,
+      notificationsEnabled,
+    };
+
+    chrome.storage.local.set({ lumoraSettings: settings }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving settings:", chrome.runtime.lastError);
+      }
+    });
+
+    // Also save to highlighterSettings for content script compatibility
+    chrome.storage.local.set({
+      highlighterSettings: {
+        currentColor: selectedColor,
+        autoSave: autoSaveEnabled,
+        showNotifications: notificationsEnabled,
+        highlightStyle: "modern",
+      },
+    });
+  }
+
+  // Load settings from chrome.storage
+  function loadSettings() {
+    chrome.storage.local.get(["lumoraSettings"], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error loading settings:", chrome.runtime.lastError);
+        return;
+      }
+
+      if (result.lumoraSettings) {
+        selectedColor = result.lumoraSettings.selectedColor || "yellow";
+        autoSaveEnabled = result.lumoraSettings.autoSaveEnabled !== false;
+        notificationsEnabled = result.lumoraSettings.notificationsEnabled !== false;
+
+        colorOptions.forEach((opt) => {
+          opt.classList.toggle("active", opt.dataset.color === selectedColor);
+        });
+        colorIndicator.className = `current-color-indicator color-${selectedColor}`;
+
+        document
+          .getElementById("autoSaveToggle")
+          .classList.toggle("active", autoSaveEnabled);
+        document
+          .getElementById("notificationsToggle")
+          .classList.toggle("active", notificationsEnabled);
+      }
+    });
+  }
+
+  // Check if content script is ready and get current highlights
+  function checkContentScriptReady() {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      if (!tabs.length) {
+        console.log("No active tab found");
+        return;
+      }
+
+      currentTabId = tabs[0].id; // Store current tab ID
+      const highlightBtn = document.getElementById("highlightBtn");
+
+      // First try sending a ping
+      chrome.tabs.sendMessage(tabs[0].id, { action: "ping" }, function (response) {
+        if (chrome.runtime.lastError) {
+          console.log("Content script not ready:", chrome.runtime.lastError);
+          highlightBtn.disabled = true;
+          highlightBtn.title = "Content script not loaded. Refresh the page and try again.";
+
+          // Fallback: try injecting the content script manually
+          if (chrome.scripting && chrome.scripting.executeScript) {
+            chrome.scripting
+              .executeScript({
+                target: { tabId: tabs[0].id },
+                files: ["content.js"],
+              })
+              .then(() => {
+                console.log("Content script injected manually");
+                highlightBtn.disabled = false;
+                highlightBtn.title = "";
+                getCurrentTabHighlights(); // Get highlights after injection
+              })
+              .catch((err) => {
+                console.error("Failed to inject content script:", err);
+              });
+          }
+        } else {
+          console.log("Content script is ready");
+          highlightBtn.disabled = false;
+          highlightBtn.title = "";
+          getCurrentTabHighlights(); // Get highlights if already ready
+        }
+      });
+    });
+  }
+
+  // Request highlights from the current tab's content script
+  function getCurrentTabHighlights() {
+    if (currentTabId) {
+      chrome.tabs.sendMessage(currentTabId, { action: "getHighlights" }, function (response) {
+        if (chrome.runtime.lastError) {
+          console.error("Error getting highlights from content script:", chrome.runtime.lastError);
+          return;
+        }
+        if (response && response.highlights) {
+          highlights = response.highlights;
+          updateHighlightsList();
+        }
+      });
+    }
+  }
+
+  // Listen for messages from content script
+  chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    console.log("Popup received message:", request.action);
+    
+    if (request.action === "highlightsUpdated") {
+      console.log("Updating highlights in popup:", request.highlights?.length || 0);
+      // Update popup with latest highlights from content script
+      if (request.highlights) {
+        highlights = request.highlights;
+        updateHighlightsList();
+      }
+      sendResponse({ received: true });
+    } else if (request.action === "ping") {
+      // Respond to ping to indicate popup is active
+      sendResponse({ status: "ready" });
+    }
+    
+    return true; // Keep message channel open
+  });
 });
 
-// Also make functions globally available for onclick handlers
-window.editHighlight = function(id) {
-    if (window.lumoraPopup) {
-        window.lumoraPopup.editHighlight(id);
-    }
-};
 
-window.deleteHighlight = function(id) {
-    if (window.lumoraPopup) {
-        window.lumoraPopup.removeHighlight(id);
-    }
-};

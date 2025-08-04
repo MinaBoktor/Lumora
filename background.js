@@ -1,156 +1,73 @@
 // Enhanced background.js with improved context menu and features
 
 chrome.runtime.onInstalled.addListener(() => {
-  // Create context menu items for highlighting
+  console.log("Lumora extension installed");
+  
+  // Create simple context menu for highlighting
   chrome.contextMenus.create({
     id: "highlightText",
-    title: "✨ Illuminate Selection",
-    contexts: ["selection"]
+    title: "✨ Highlight Selection",
+    contexts: ["selection"],
+    documentUrlPatterns: ["http://*/*", "https://*/*"]
   });
 
-  chrome.contextMenus.create({
-    id: "selectHighlight",
-    title: "🎯 Select This Illumination",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
-    id: "deselectHighlight",
-    title: "🚫 Deselect This Illumination",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
-    id: "separator1",
-    type: "separator",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
-    id: "removeHighlight",
-    title: "❌ Remove This Illumination",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
-    id: "copyHighlight",
-    title: "📋 Copy Illumination",
-    contexts: ["selection"]
-  });
-
-  chrome.contextMenus.create({
-    id: "separator2",
-    type: "separator",
-    contexts: ["page"]
-  });
-
-  chrome.contextMenus.create({
-    id: "selectAllHighlights",
-    title: "🎯 Select All Illuminations",
-    contexts: ["page"]
-  });
-
-  chrome.contextMenus.create({
-    id: "deselectAllHighlights",
-    title: "🚫 Deselect All Illuminations",
-    contexts: ["page"]
-  });
-
-  chrome.contextMenus.create({
-    id: "clearHighlights",
-    title: "🧹 Clear All Illuminations",
-    contexts: ["page"]
-  });
-
-  chrome.contextMenus.create({
-    id: "exportHighlights",
-    title: "💾 Export All Illuminations",
-    contexts: ["page"]
+  // Set default settings on first install
+  chrome.storage.local.set({
+    highlighterSettings: {
+      currentColor: 'yellow',
+      autoSave: true,
+      showNotifications: true,
+      highlightStyle: 'modern'
+    }
   });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  console.log("Context menu clicked:", info.menuItemId);
+  
   try {
-      if (!chrome.runtime?.id) {
-        // Extension context invalidated
-        return;
-      }
-    switch (info.menuItemId) {
-      case "highlightText":
-        // Get current color setting
+    if (!chrome.runtime?.id) {
+      console.error("Extension context invalidated");
+      return;
+    }
+    
+    if (info.menuItemId === "highlightText") {
+      console.log("Highlighting text via context menu");
+      
+      // Get current color setting
+      try {
         const settings = await chrome.storage.local.get(['highlighterSettings']);
         const currentColor = settings.highlighterSettings?.currentColor || 'yellow';
         
+        console.log("Using color:", currentColor);
+        
         chrome.tabs.sendMessage(tab.id, { 
-          action: "highlightSelectedText", 
+          action: "highlightSelection", 
           color: currentColor 
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error("Failed to send message to content script:", chrome.runtime.lastError);
+          } else {
+            console.log("Context menu highlight response:", response);
+          }
         });
-        break;
-
-      case "selectHighlight":
-        chrome.tabs.sendMessage(tab.id, { action: "selectHighlightAtSelection" });
-        break;
-
-      case "deselectHighlight":
-        chrome.tabs.sendMessage(tab.id, { action: "deselectHighlightAtSelection" });
-        break;
-
-      case "selectAllHighlights":
-        chrome.tabs.sendMessage(tab.id, { action: "selectAllHighlights" });
-        break;
-
-      case "deselectAllHighlights":
-        chrome.tabs.sendMessage(tab.id, { action: "deselectAllHighlights" });
-        break;
-
-      case "clearHighlights":
-        if (await showConfirmDialog("Clear all highlights on this page?")) {
-          chrome.tabs.sendMessage(tab.id, { action: "clearAllHighlights" });
-        }
-        break;
-
-      case "removeHighlight":
-        chrome.tabs.sendMessage(tab.id, { action: "removeHighlightAtSelection" });
-        break;
-
-      case "copyHighlight":
-        chrome.tabs.sendMessage(tab.id, { action: "copySelectedHighlight" });
-        break;
-
-      case "exportHighlights":
-        chrome.tabs.sendMessage(tab.id, { action: "exportAllHighlights" });
-        break;
+      } catch (error) {
+        console.error('Failed to get settings:', error);
+        chrome.tabs.sendMessage(tab.id, { 
+          action: "highlightSelection", 
+          color: 'yellow' 
+        });
+      }
     }
   } catch (error) {
     console.error('Context menu action failed:', error);
   }
 });
 
-// Utility function to show confirmation dialog
-async function showConfirmDialog(message) {
-  return new Promise((resolve) => {
-    // Since we can't use confirm() in service worker, we'll send message to content script
-    resolve(true); // For now, always confirm. Content script will handle the actual confirmation
-  });
-}
-
-// Handle installation and updates
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    // Set default settings on first install
-    chrome.storage.local.set({
-      highlighterSettings: {
-        currentColor: 'yellow',
-        autoSave: true,
-        showNotifications: true,
-        highlightStyle: 'modern'
-      }
-    });
-  }
-});
-
 // Background message handling for cross-tab communication
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("Background received message:", request.action);
+  
   if (request.action === 'getTabInfo') {
     sendResponse({
       tabId: sender.tab?.id,
@@ -158,44 +75,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
   
-  if (request.action === 'showNotification') {
-    // Could implement chrome.notifications API here if needed
-    console.log('Notification:', request.message);
-  }
-});
-
-// Clean up old data periodically (run once per day)
-chrome.alarms.create('cleanup', { periodInMinutes: 1440 });
-
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'cleanup') {
-    await cleanupOldHighlights();
-  }
-});
-
-async function cleanupOldHighlights() {
-  try {
-    if (!chrome.storage?.local) return;
-    const result = await chrome.storage.local.get();
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    
-    for (const [key, value] of Object.entries(result)) {
-      if (key.startsWith('http') && Array.isArray(value)) {
-        // Filter out highlights older than 30 days
-        const recentHighlights = value.filter(h => 
-          h.timestamp && h.timestamp > thirtyDaysAgo
-        );
-        
-        if (recentHighlights.length !== value.length) {
-          if (recentHighlights.length === 0) {
-            await chrome.storage.local.remove(key);
-          } else {
-            await chrome.storage.local.set({ [key]: recentHighlights });
-          }
-        }
-      }
+  if (request.action === 'highlightsUpdated') {
+    console.log("Forwarding highlights update");
+    // Forward to popup if it's open
+    try {
+      chrome.runtime.sendMessage(request).catch(() => {
+        // Popup might not be open, ignore error
+      });
+    } catch (error) {
+      // Popup might not be open, ignore error
     }
-  } catch (error) {
-    console.error('Cleanup failed:', error);
   }
-}
+  
+  return true;
+});
+
+console.log("Lumora background script loaded");
+
